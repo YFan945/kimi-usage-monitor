@@ -55,7 +55,7 @@ select{background:var(--panel2);border:1px solid var(--border);border-radius:6px
 .stat .s{color:var(--muted);font-size:11px;margin-top:2px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
-.chart-wrap{overflow-x:auto;position:relative}
+.chart-wrap{flex:1 1 auto;min-width:0;overflow-x:auto;position:relative}
 .chart-inner{width:max-content;min-width:100%}
 .bar{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column-reverse;cursor:pointer;position:relative}
 .chart-inner.dense .bar{min-width:var(--minbar,5px)}
