@@ -68,6 +68,10 @@ select{background:var(--panel2);border:1px solid var(--border);border-radius:6px
 .bars{display:flex;align-items:flex-end;gap:3px;height:240px;padding-top:8px;background:repeating-linear-gradient(to top,var(--grid,rgba(128,128,128,.18)) 0,var(--grid,rgba(128,128,128,.18)) 1px,transparent 1px,transparent calc(240px/4))}
 .xlabels{position:relative;height:16px;margin-top:6px}
 .xlabels span{position:absolute;top:0;line-height:16px;color:var(--muted);font-size:10px;white-space:nowrap}
+.chart-inner.sparse .bars{justify-content:center}
+.chart-inner.sparse .bar{flex:0 0 auto;width:var(--barw,80px)}
+.chart-inner.sparse .xlabels{display:flex;justify-content:center;gap:3px}
+.chart-inner.sparse .xlabels span{position:static;left:auto;right:auto;text-align:center}
 .y-max{color:var(--muted);font-size:11px;text-align:right;margin-bottom:-4px}
 .legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px}
 .legend span{display:flex;align-items:center;gap:6px}
@@ -604,11 +608,17 @@ function drawCharts(recs, sumN) {
   if (dense) inner.style.setProperty('--minbar', (w / maxBuckets).toFixed(2) + 'px');
   else inner.style.removeProperty('--minbar');
   const bucketW = dense ? w / maxBuckets : w / arr.length;
+  // 桶数不足 7 时柱宽封顶为"七格宽度"（w/7）并居中，两侧空白不标刻度
+  const sparse = !dense && arr.length < 7;
+  inner.classList.toggle('sparse', sparse);
+  if (sparse) inner.style.setProperty('--barw', (w / 7 - 3).toFixed(2) + 'px');
+  else inner.style.removeProperty('--barw');
   const every = Math.max(1, Math.round(80 / bucketW));
   const labelOf = k => gran === 'hour' ? k.slice(5, 10) + ' ' + k.slice(11, 13) + ':00' : k.slice(5);
   // 标签绝对定位在轴层上（居中对齐桶位、首尾贴边），不受窄桶裁剪
   const labelSpans = () => {
     const n = arr.length; if (!n) return '';
+    if (sparse) return arr.map(([k]) => `<span style="width:${(w / 7 - 3).toFixed(2)}px">${esc(labelOf(k))}</span>`).join('');
     const out = [];
     for (let i = 0, k = 0; i < n; i += every, k++) {
       let pos;
