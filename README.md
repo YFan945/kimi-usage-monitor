@@ -1,4 +1,4 @@
-# Kimi Code 用量监控（Kimi Monitor）
+# Kimi-CodeMonitor — Kimi Code 用量监控
 
 本地桌面应用，监控 [Kimi Code](https://www.kimi.com/)（月之暗面 CLI）的 API 调用次数与 token 消耗。
 零依赖 Node 服务 + 单页前端，支持任意时段筛选、按模型/项目多选筛选、GitHub 风格热力总览、双主题。
@@ -9,10 +9,10 @@
 
 | 文件 | 平台 | 用法 |
 |---|---|---|
-| `KimiMonitor-Setup-1.0.1.exe` | Windows 10/11 x64 | **安装版（推荐）**：双击安装 → 开始菜单/桌面快捷方式；卸载走"设置 → 应用 → 已安装的应用" |
-| `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"）；首次运行自动在桌面创建「Kimi Monitor」快捷方式 |
+| `KimiMonitor-Setup-1.0.2.exe` | Windows 10/11 x64 | **安装版（推荐）**：双击安装 → 开始菜单/桌面快捷方式；卸载走"设置 → 应用 → 已安装的应用" |
+| `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"）；首次运行自动在桌面创建「Kimi-CodeMonitor」快捷方式 |
 | `KimiMonitor-Windows-Portable.zip` | Windows | 绿色文件夹版，解压后双击 `启动监控.bat` |
-| `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「Kimi Monitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
+| `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「Kimi-CodeMonitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
 
 ## 如何使用
 
@@ -45,7 +45,7 @@
 
 ### 一键打包（推荐）
 
-双击 `build.bat`（或命令行运行 `node build.js`），自动完成：读取版本号 → 构建单文件 exe → 冒烟测试 → 安装包 → 绿色版 zip，产物汇总在 `out\`。可选参数：
+双击 `build.bat`（或命令行运行 `node build.js`），自动完成：读取版本号 → 构建单文件 exe → 冒烟测试 → 安装包 → 绿色版 zip，产物生成在 `dist\`。可选参数：
 
 - `--mac`：额外构建 macOS .app 包（自动下载 node 官方双架构二进制，约 100MB）
 - `--release`：构建后把产物上传到 GitHub Release v<版本号>（已存在该 Release 则覆盖资产）
@@ -71,7 +71,7 @@ npx postject dist\KimiMonitor.exe NODE_SEA_BLOB sea-prep.blob --sentinel-fuse %F
 grep -abo NODE_SEA_FUSE "C:\Program Files\nodejs\node.exe"
 ```
 
-产物 `dist\KimiMonitor.exe`（约 90MB）双击即用：自动起服务、以 Edge 应用模式开窗、首次运行自动在桌面创建「Kimi Monitor」快捷方式（只创建一次，由 config.json 的 `shortcut` 字段标记）；配置写在 exe 旁边。
+产物 `dist\KimiMonitor.exe`（约 90MB）双击即用：自动起服务、以 Edge 应用模式开窗、首次运行自动在桌面创建「Kimi-CodeMonitor」快捷方式（只创建一次，由 config.json 的 `shortcut` 字段标记）；配置写在 exe 旁边。
 
 - `sea-config.json` 声明了内嵌资产（`index.html` / `icon.png` / `favicon.ico`），`server.js` 通过 `node:sea` 检测自己是否运行在 SEA 模式
 - 坑：不要用 rcedit 给这个 exe 换图标（90MB 的 Node 本体会让它挂死）；图标通过旁边的 `.ico` 文件给快捷方式用
@@ -84,7 +84,7 @@ grep -abo NODE_SEA_FUSE "C:\Program Files\nodejs\node.exe"
 ISCC.exe packaging\installer.iss
 ```
 
-产物 `dist\KimiMonitor-Setup-1.0.1.exe`：免管理员权限安装到 `%LOCALAPPDATA%\Programs\KimiMonitor`，无条件创建开始菜单 + 桌面快捷方式，带"应用和功能"卸载项（卸载时会强制结束运行中的进程并清理配置文件）。版本号在 `packaging\installer.iss` 顶部 `#define` 处修改。
+产物 `dist\KimiMonitor-Setup-1.0.2.exe`：免管理员权限安装到 `%LOCALAPPDATA%\Programs\KimiMonitor`，安装时可勾选是否创建开始菜单 / 桌面快捷方式（默认都创建），带"应用和功能"卸载项（卸载时会强制结束运行中的进程并清理配置文件）。版本号在 `packaging\installer.iss` 顶部 `#define` 处修改。
 
 ### 3. macOS 应用包（.app）
 
@@ -93,15 +93,15 @@ ISCC.exe packaging\installer.iss
 1. 从 [nodejs.org](https://nodejs.org/dist/) 下载 macOS **arm64 与 x64** 两个官方 tarball（v22 LTS），解出各自 `bin/node`，存为 `Resources/bin/node-darwin-arm64`、`Resources/bin/node-darwin-x64`
 2. 把 `server.js` 与 `public/` 拷进 `Resources/app/`
 3. `Contents/MacOS/kimi-monitor` 写一个启动脚本：按 `uname -m` 选对应架构的 node 执行 `Resources/app/server.js`，然后打开浏览器
-4. `Info.plist` 设 `CFBundleExecutable=kimi-monitor`、`CFBundleIconFile=icon.icns`、`CFBundleName=Kimi Monitor`
+4. `Info.plist` 设 `CFBundleExecutable=kimi-monitor`、`CFBundleIconFile=icon.icns`、`CFBundleName=Kimi-CodeMonitor`
 5. 图标 `icon.icns` 由 `icon-512.png` 转换（Python Pillow 可直接生成 ICNS）
 6. 再包一层「卸载.command」脚本（`pkill` 掉服务 + 删除 .app 与 `~/Library/Application Support/KimiMonitor`），最后：
 
 ```bash
-tar czf dist/Kimi-Monitor-macOS.tar.gz "Kimi Monitor.app" 卸载.command
+tar czf dist/Kimi-Monitor-macOS.tar.gz "Kimi-CodeMonitor.app" 卸载.command
 ```
 
-未做公证，首次打开需右键 → 打开，或 `xattr -cr "Kimi Monitor.app"`。
+未做公证，首次打开需右键 → 打开，或 `xattr -cr "Kimi-CodeMonitor.app"`。
 
 ### 4. Windows 绿色文件夹版（zip）
 

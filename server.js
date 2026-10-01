@@ -26,7 +26,7 @@ const HOME = process.env.USERPROFILE || process.env.HOME;
 // 配置目录：Windows 单文件 exe → exe 旁（便携）；macOS .app → Application Support；纯 node 运行 → 项目目录
 let CONFIG_DIR;
 if (isSEA) CONFIG_DIR = path.dirname(process.execPath);
-else if (process.platform === 'darwin') CONFIG_DIR = path.join(os.homedir(), 'Library', 'Application Support', 'KimiMonitor');
+else if (process.platform === 'darwin') CONFIG_DIR = path.join(os.homedir(), 'Library', 'Application Support', 'Kimi-CodeMonitor');
 else CONFIG_DIR = __dirname;
 try { fs.mkdirSync(CONFIG_DIR, { recursive: true }); } catch { }
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -70,7 +70,7 @@ function ensureWinShortcut() {
     const exe = process.execPath;
     const ico = path.join(CONFIG_DIR, 'KimiMonitor.ico');
     try { fs.writeFileSync(ico, ASSETS['favicon.ico']); } catch { }
-    const scr = `$d=[Environment]::GetFolderPath('Desktop');$ws=New-Object -ComObject WScript.Shell;$l=$ws.CreateShortcut($d+'\\Kimi Monitor.lnk');$l.TargetPath='${exe}';$l.WorkingDirectory='${path.dirname(exe)}';$l.IconLocation='${ico}';$l.Save()`;
+    const scr = `$d=[Environment]::GetFolderPath('Desktop');$ws=New-Object -ComObject WScript.Shell;$l=$ws.CreateShortcut($d+'\\Kimi-CodeMonitor.lnk');$l.TargetPath='${exe}';$l.WorkingDirectory='${path.dirname(exe)}';$l.IconLocation='${ico}';$l.Save()`;
     cp.exec(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${scr}"`, { windowsHide: true }, () => { });
   } catch { }
 }

@@ -2,7 +2,7 @@
 chcp 65001 >nul
 setlocal EnableExtensions
 cd /d "%~dp0"
-title Kimi Monitor
+title Kimi-CodeMonitor
 
 rem --- 读取端口（服务启动时写入的 port.txt，默认 43110）---
 set "PORT=43110"
@@ -13,7 +13,7 @@ set "NODE_EXE="
 where node >nul 2>nul && set "NODE_EXE=node"
 if not defined NODE_EXE if exist "%~dp0runtime\node.exe" set "NODE_EXE=%~dp0runtime\node.exe"
 if defined NODE_EXE goto run
-echo [Kimi Monitor] 未找到 Node.js。
+echo [Kimi-CodeMonitor] 未找到 Node.js。
 echo 请安装 Node.js，或从任意一台装了 Node 的电脑复制 node.exe 到 runtime\ 文件夹。
 pause
 exit /b 1
