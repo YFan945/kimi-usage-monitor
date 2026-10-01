@@ -95,7 +95,7 @@ tbody tr:hover{background:var(--hover)}
 .hbar-row.sel .name{color:var(--accent);font-weight:600}
 .hbar-row.sel .track{box-shadow:inset 0 0 0 1px var(--accent)}
 .hbar-row .name{width:110px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.hbar-row .track{flex:1;background:var(--panel2);border-radius:4px;height:18px;overflow:hidden}
+.hbar-row .track{flex:1;background:transparent;border-radius:4px;height:18px;overflow:hidden}
 .hbar-row .fill{height:100%;border-radius:4px}
 .hbar-row .val{flex:0 0 auto;color:var(--muted);font-size:12px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
 .filter-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
@@ -298,6 +298,15 @@ function fmt(n) {
   return n.toLocaleString('en-US');
 }
 function fmtFull(n) { return (n | 0).toLocaleString('en-US'); }
+function fmtTick(n) { // y 轴标签：按 2 位有效数字取整再去掉小数零（5289.4万→5300万，1322.4万→1300万）
+  if (n <= 0) return '0';
+  const mag = Math.pow(10, Math.floor(Math.log10(n)) - 1);
+  n = Math.round(n / mag) * mag;
+  const abs = Math.abs(n);
+  if (abs >= 1e8) return (n / 1e8).toFixed(2).replace(/\.?0+$/, '') + '亿';
+  if (abs >= 1e4) return (n / 1e4).toFixed(1).replace(/\.0$/, '') + '万';
+  return n.toLocaleString('en-US');
+}
 function fmtTime(t) { const d = new Date(t); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`; }
 function rel(t) {
   if (!t) return '—';
@@ -643,9 +652,9 @@ function drawCharts(recs, sumN) {
 
   const max = Math.max(1, ...arr.map(([, b]) => b.o + b.i + b.c + (incCr ? b.r : 0)));
   $('#yMax').textContent = '峰值 ' + fmt(max) + ' tokens';
-  // y 轴刻度：0、1/4、1/2、3/4、峰值，与网格线对齐（.bars 内容区高 240px）
+  // y 轴网格线保持四等分（见 .bars 背景），标签就近取整为好看的整数（如 100万、300万）
   $('#yAxis').innerHTML = [1, .75, .5, .25, 0]
-    .map(p => `<span style="bottom:${p * 240}px">${p === 0 ? '0' : fmt(max * p)}</span>`).join('');
+    .map(p => `<span style="bottom:${p * 240}px">${p === 0 ? '0' : fmtTick(max * p)}</span>`).join('');
   $('#bars').innerHTML = arr.map(([k, b]) => {
     const total = b.o + b.i + b.c + (incCr ? b.r : 0);
     const h = v => (v / max * 100);
