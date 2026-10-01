@@ -1,7 +1,7 @@
 ; KimiMonitor — Windows 安装包脚本（Inno Setup）
 ; 构建：ISCC.exe packaging\installer.iss
 #define MyAppName "KimiMonitor"
-#define MyAppVersion "1.1.2"
+#define MyAppVersion "1.1.3"
 #define MyAppPublisher "YFan945"
 #define MyAppURL "https://github.com/YFan945/kimi-usage-monitor"
 #define SourceDir ".."
@@ -53,5 +53,14 @@ Filename: "{app}\KimiMonitor.exe"; Description: "立即启动 {#MyAppName}"; Fla
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM KimiMonitor.exe /F"; Flags: runhidden; RunOnceId: "KillMonitor"
 
 [UninstallDelete]
-Type: files; Name: "{app}\config.json"
 Type: files; Name: "{app}\port.txt"
+Type: files; Name: "{app}\KimiMonitor.ico"
+Type: files; Name: "{app}\*.log"
+
+[Code]
+procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
+begin
+  if CurUninstallStep = usUninstall then
+    if MsgBox('是否同时删除本应用的配置文件（config.json，含数据目录设置）？' #13#10 #13#10 '被监控的 Kimi Code 会话数据（~\.kimi-code）不受任何影响。', mbConfirmation, MB_YESNO) = IDYES then
+      DeleteFile(ExpandConstant('{app}\config.json'));
+end;

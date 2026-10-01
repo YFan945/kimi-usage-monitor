@@ -9,7 +9,7 @@
 
 | 文件 | 平台 | 用法 |
 |---|---|---|
-| `KimiMonitor-Setup-1.1.2.exe` | Windows 10/11 x64 | **安装版（推荐）**：双击安装 → 开始菜单/桌面快捷方式；卸载走"设置 → 应用 → 已安装的应用" |
+| `KimiMonitor-Setup-1.1.3.exe` | Windows 10/11 x64 | **安装版（推荐）**：双击安装 → 开始菜单/桌面快捷方式；卸载走"设置 → 应用 → 已安装的应用" |
 | `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"）；首次运行自动在桌面创建「KimiMonitor」快捷方式 |
 | `KimiMonitor-Windows-Portable.zip` | Windows | 绿色文件夹版，解压后双击 `启动监控.bat` |
 | `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「KimiMonitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
@@ -40,6 +40,34 @@
 - 页面右上角"数据目录"面板可随时增删扫描目录，修改后立即重新扫描；不存在的路径会被自动剔除
 - 路径结构需为 `…\sessions\<工作区>\<会话>\agents`，也兼容直接指向某个会话集合目录
 - 扫描目录保存在 `config.json`（源码运行 = 项目目录；Windows exe = exe 旁边；macOS = `~/Library/Application Support/KimiMonitor`），其余界面状态（主题、时段、筛选）保存在浏览器 localStorage
+
+## 各版本的使用差异（后台与退出）
+
+本应用由「后台服务 + 界面窗口」两部分组成。**关闭应用窗口 ≠ 退出**：窗口关掉后服务仍在后台运行（右下角托盘图标），要彻底退出请用下面的退出方式。
+
+### 安装版（KimiMonitor-Setup-x.x.x.exe）
+
+- **启动**：开始菜单或桌面快捷方式「KimiMonitor」（安装时可选择是否创建），没有控制台黑窗
+- **后台**：关闭应用窗口后右下角托盘图标仍在，左键或右键菜单可「打开窗口」或「退出」
+- **退出**：托盘右键 →「退出」，或页面右上角「退出」——服务、托盘、应用窗口会一起关闭
+- **卸载**：设置 → 应用 → KimiMonitor → 卸载。会先结束后台服务和应用窗口，并**询问是否删除配置文件**（config.json，含数据目录设置，选否则下次安装保留设置）；被监控的 Kimi Code 会话数据（`~/.kimi-code`）不受任何影响；应用在注册表中只有 Windows 标准的卸载信息，卸载时自动移除，本应用自身不写任何注册表项
+
+### 便携单文件版（KimiMonitor-Windows-x64.exe）
+
+- **启动**：双击 exe（无控制台黑窗），首次运行自动在桌面创建「KimiMonitor」快捷方式
+- **后台 / 退出**：同安装版（托盘退出 / 页面退出）
+- **卸载**：无任何安装与注册表信息，退出后直接删 exe 即可；配置文件 config.json 生成在 exe 旁边，想要干净卸载就一并删除
+
+### 绿色文件夹版（KimiMonitor-Windows-Portable.zip）
+
+- **启动**：解压后双击「启动监控.bat」（电脑没有 Node 时，把 node.exe 放进 `runtime\` 子文件夹，见打包章节）
+- **后台 / 退出**：同安装版；也可双击「停止监控.bat」结束服务
+- **卸载**：退出后直接删除整个文件夹
+
+### macOS（Kimi-Monitor-macOS.tar.gz）
+
+- **启动**：打开「KimiMonitor.app」，自动打开浏览器页面；关闭页面后服务仍在后台
+- **退出**：在「活动监视器」结束 node 进程，或直接双击包内「卸载.command」（同时删除 App 与 `~/Library/Application Support/KimiMonitor`）
 
 ## 打包成桌面应用
 
@@ -84,7 +112,7 @@ grep -abo NODE_SEA_FUSE "C:\Program Files\nodejs\node.exe"
 ISCC.exe packaging\installer.iss
 ```
 
-产物 `dist\KimiMonitor-Setup-1.1.2.exe`：免管理员权限安装到 `%LOCALAPPDATA%\Programs\KimiMonitor`，安装时可勾选是否创建开始菜单 / 桌面快捷方式（默认都创建），带"应用和功能"卸载项（卸载时会强制结束运行中的进程并清理配置文件）。版本号在 `packaging\installer.iss` 顶部 `#define` 处修改。
+产物 `dist\KimiMonitor-Setup-1.1.3.exe`：免管理员权限安装到 `%LOCALAPPDATA%\Programs\KimiMonitor`，安装时可勾选是否创建开始菜单 / 桌面快捷方式（默认都创建），带"应用和功能"卸载项（卸载时会强制结束运行中的进程并清理配置文件）。版本号在 `packaging\installer.iss` 顶部 `#define` 处修改。
 
 ### 3. macOS 应用包（.app）
 

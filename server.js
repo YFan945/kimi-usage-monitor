@@ -75,6 +75,26 @@ function ensureWinShortcut() {
   } catch { }
 }
 
+// ---------- 关闭 Edge 应用窗口（按页面标题匹配，WM_CLOSE 只关本应用窗口，不影响其他 Edge 标签） ----------
+const APP_TITLE = 'Kimi Code 用量监控';
+const WIN32_CLOSE_CS = "using System;using System.Runtime.InteropServices;using System.Text;public class Win32Close{public delegate bool EnumProc(IntPtr h,IntPtr l);[DllImport(\"user32.dll\")]public static extern bool EnumWindows(EnumProc cb,IntPtr l);[DllImport(\"user32.dll\")]public static extern int GetWindowText(IntPtr h,StringBuilder t,int n);[DllImport(\"user32.dll\")]public static extern bool PostMessage(IntPtr h,uint m,IntPtr w,IntPtr l);[DllImport(\"user32.dll\")]public static extern bool IsWindowVisible(IntPtr h);public static void CloseByTitle(string title){EnumWindows(delegate(IntPtr h,IntPtr l){if(IsWindowVisible(h)){var sb=new StringBuilder(256);GetWindowText(h,sb,256);if(sb.ToString().Contains(title))PostMessage(h,0x0010,IntPtr.Zero,IntPtr.Zero);}return true;},IntPtr.Zero);}}";
+function closeAppWindows() {
+  if (process.platform !== 'win32') return;
+  try {
+    const ps = [
+      `Add-Type -TypeDefinition '${WIN32_CLOSE_CS}'`,
+      `[Win32Close]::CloseByTitle('${APP_TITLE}')`,
+    ].join("\r\n");
+    const enc = Buffer.from(ps, 'utf16le').toString('base64');
+    const closer = require('child_process').spawn('powershell',
+      ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', enc],
+      { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+    closer.stdout.resume(); closer.stderr.resume();
+    closer.unref();
+  } catch { }
+}
+
 // ---------- 托盘图标（Windows）：窗口关闭后在后台运行，左键/右键菜单可打开窗口或退出 ----------
 function startTray() {
   if (process.platform !== 'win32' || process.env.KIMI_NO_TRAY) return;
@@ -85,6 +105,7 @@ function startTray() {
       try { fs.writeFileSync(ico, ASSETS['favicon.ico']); } catch { }
     }
     const ps = [
+      `Add-Type -TypeDefinition '${WIN32_CLOSE_CS}'`,
       "Add-Type -AssemblyName System.Windows.Forms",
       "Add-Type -AssemblyName System.Drawing",
       `$ico = New-Object System.Drawing.Icon('${ico.replace(/'/g, "''")}')`,
@@ -97,8 +118,8 @@ function startTray() {
       "$openItem = $menu.Items.Add('打开窗口')",
       "$openItem.add_Click({ try { Invoke-RestMethod -Method Post -Uri \"$base/api/open\" | Out-Null } catch {} })",
       "$quitItem = $menu.Items.Add('退出')",
-      // 直接按 PID 杀服务进程，比 HTTP 退出更可靠；随后立即收起托盘图标
-      `$quitItem.add_Click({ try { Stop-Process -Id ${process.pid} -Force -ErrorAction Stop } catch {}; $ni.Visible = $false; $timer.Stop(); [System.Windows.Forms.Application]::Exit() })`,
+      // 关闭应用窗口 → 按 PID 结束服务 → 立即收起托盘图标
+      `$quitItem.add_Click({ [Win32Close]::CloseByTitle('${APP_TITLE}'); try { Stop-Process -Id ${process.pid} -Force -ErrorAction Stop } catch {}; $ni.Visible = $false; $timer.Stop(); [System.Windows.Forms.Application]::Exit() })`,
       "$ni.ContextMenuStrip = $menu",
       "$ni.add_Click({ if ($_.Button -eq [System.Windows.Forms.MouseButtons]::Left) { try { Invoke-RestMethod -Method Post -Uri \"$base/api/open\" | Out-Null } catch {} } })",
       "$timer = New-Object System.Windows.Forms.Timer",
@@ -326,7 +347,8 @@ const server = http.createServer((req, res) => {
   if (url.pathname === '/api/quit' && req.method === 'POST') {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('bye');
-    setTimeout(() => process.exit(0), 100);
+    closeAppWindows(); // 连 Edge 应用窗口一起关闭（托盘退出路径由托盘脚本自行关闭）
+    setTimeout(() => process.exit(0), 150);
     return;
   }
   let p = url.pathname === '/' ? '/index.html' : url.pathname;
