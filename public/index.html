@@ -760,6 +760,7 @@ function hbars(el, entries, labeler, keyAttr, selSet) {
   </div>`).join('');
 }
 function drawBreakdowns(recsRange) {
+  const incCr = $('#includeCr').checked;
   const byModel = new Map(), byProj = new Map();
   for (const r of recsRange) {
     const m = byModel.get(r.m) || { name: r.m, calls: 0, i: 0, o: 0, r: 0, c: 0 };
@@ -768,12 +769,12 @@ function drawBreakdowns(recsRange) {
     const pr = byProj.get(cwd) || { name: cwd, calls: 0, i: 0, o: 0, r: 0, c: 0 };
     pr.calls++; pr.i += r.i; pr.o += r.o; pr.r += r.r; pr.c += r.c; byProj.set(cwd, pr);
   }
-  const mArr = [...byModel.values()].map(m => ({ key: m.name, name: shortModel(m.name), weight: m.i + m.o + m.c, tip: `${m.name}\n调用 ${fmtFull(m.calls)} | 输入 ${fmtFull(m.i)} | 输出 ${fmtFull(m.o)} | 缓存读 ${fmtFull(m.r)}`, color: 'var(--accent)', _m: m }))
+  const mArr = [...byModel.values()].map(m => ({ key: m.name, name: shortModel(m.name), weight: m.i + m.o + m.c + (incCr ? m.r : 0), tip: `${m.name}\n调用 ${fmtFull(m.calls)} | 输入 ${fmtFull(m.i)} | 输出 ${fmtFull(m.o)} | 缓存读 ${fmtFull(m.r)} | 总计 ${fmtFull(m.i + m.o + m.c + m.r)}`, color: 'var(--accent)', _m: m }))
     .sort((a, b) => b.weight - a.weight);
-  hbars($('#byModel'), mArr.slice(0, 8), e => `${fmtFull(e._m.calls)} 次 · ${fmt(e.weight)}`, 'model', fltModel);
-  const pArr = [...byProj.values()].map(p => ({ key: p.name, name: shortPath(p.name), weight: p.i + p.o + p.c, tip: `${p.name}\n调用 ${fmtFull(p.calls)} | 输入 ${fmtFull(p.i)} | 输出 ${fmtFull(p.o)} | 缓存读 ${fmtFull(p.r)}`, color: 'var(--c-out)', _p: p }))
+  hbars($('#byModel'), mArr.slice(0, 8), e => `${fmtFull(e._m.calls)} 次 · ${fmt(e.weight)} tokens`, 'model', fltModel);
+  const pArr = [...byProj.values()].map(p => ({ key: p.name, name: shortPath(p.name), weight: p.i + p.o + p.c + (incCr ? p.r : 0), tip: `${p.name}\n调用 ${fmtFull(p.calls)} | 输入 ${fmtFull(p.i)} | 输出 ${fmtFull(p.o)} | 缓存读 ${fmtFull(p.r)} | 总计 ${fmtFull(p.i + p.o + p.c + p.r)}`, color: 'var(--c-out)', _p: p }))
     .sort((a, b) => b.weight - a.weight);
-  hbars($('#byProject'), pArr.slice(0, 8), e => `${fmtFull(e._p.calls)} 次 · ${fmt(e.weight)}`, 'proj', fltProj);
+  hbars($('#byProject'), pArr.slice(0, 8), e => `${fmtFull(e._p.calls)} 次 · ${fmt(e.weight)} tokens`, 'proj', fltProj);
 }
 
 // ---------- 会话表 ----------

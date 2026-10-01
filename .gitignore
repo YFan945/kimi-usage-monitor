@@ -7,3 +7,4 @@ sea-prep.blob
 node_modules/
 *.log
 .DS_Store
+out/

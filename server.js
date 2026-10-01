@@ -40,7 +40,7 @@ const PORT = Number(
 );
 
 // ---------- 配置 ----------
-const CFG = { roots: [], setupDone: false };
+const CFG = { roots: [], setupDone: false, shortcut: false };
 const DEFAULT_ROOT = path.join(HOME, '.kimi-code', 'sessions');
 function loadConfig() {
   try {
@@ -48,6 +48,7 @@ function loadConfig() {
     if (Array.isArray(j.roots)) CFG.roots = j.roots;
     if (typeof j.setupDone === 'boolean') CFG.setupDone = j.setupDone;
     else if (CFG.roots.length) CFG.setupDone = true; // 旧版配置已选过目录，视为完成引导
+    if (typeof j.shortcut === 'boolean') CFG.shortcut = j.shortcut;
   } catch { }
   if (!CFG.roots.length) {
     if (fs.existsSync(DEFAULT_ROOT)) CFG.roots.push(DEFAULT_ROOT); // 首次运行自动使用本机默认目录
@@ -55,6 +56,24 @@ function loadConfig() {
   CFG.roots = [...new Set(CFG.roots.map(p => path.normalize(String(p).trim())).filter(Boolean))];
 }
 loadConfig();
+function saveConfig() {
+  try { fs.writeFileSync(CONFIG_FILE, JSON.stringify({ port: PORT, roots: CFG.roots, setupDone: !!CFG.setupDone, shortcut: !!CFG.shortcut }, null, 2)); } catch { }
+}
+
+// 单文件 exe（SEA）模式下首次运行自动创建桌面快捷方式（仅 Windows；由 config.json 的 shortcut 标记保证只创建一次）
+function ensureWinShortcut() {
+  if (process.platform !== 'win32' || !isSEA || CFG.shortcut) return;
+  CFG.shortcut = true;
+  saveConfig();
+  try {
+    const cp = require('child_process');
+    const exe = process.execPath;
+    const ico = path.join(CONFIG_DIR, 'KimiMonitor.ico');
+    try { fs.writeFileSync(ico, ASSETS['favicon.ico']); } catch { }
+    const scr = `$d=[Environment]::GetFolderPath('Desktop');$ws=New-Object -ComObject WScript.Shell;$l=$ws.CreateShortcut($d+'\\Kimi Monitor.lnk');$l.TargetPath='${exe}';$l.WorkingDirectory='${path.dirname(exe)}';$l.IconLocation='${ico}';$l.Save()`;
+    cp.exec(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${scr}"`, { windowsHide: true }, () => { });
+  } catch { }
+}
 // 引导期对默认目录做一次探测（缓存结果，避免每次轮询都全量扫描）
 let defaultProbe = null;
 function getDefaultProbe() {
@@ -246,7 +265,7 @@ const server = http.createServer((req, res) => {
       CFG.roots = roots.filter((_, i) => stats[i].ok);
       if (typeof setupDone === 'boolean') CFG.setupDone = setupDone;
       else CFG.setupDone = CFG.setupDone || CFG.roots.length > 0;
-      try { fs.writeFileSync(CONFIG_FILE, JSON.stringify({ port: PORT, roots: CFG.roots, setupDone: !!CFG.setupDone }, null, 2)); } catch { }
+      saveConfig();
       wireCache.clear(); stateCache.clear(); indexCache.clear(); defaultProbe = null;
       lastScan = { at: 0, data: null };
       json(res, { ok: true, roots: CFG.roots, setupDone: !!CFG.setupDone, stats });
@@ -306,5 +325,6 @@ server.listen(PORT, '127.0.0.1', () => {
   try { if (process.platform === 'win32') fs.writeFileSync(path.join(CONFIG_DIR, 'port.txt'), String(PORT)); } catch { }
   console.log(`[kimi-usage-monitor] http://127.0.0.1:${PORT}`);
   console.log(`[kimi-usage-monitor] 数据目录: ${CFG.roots.join(' ; ') || '(未配置，请打开页面右上角"数据目录"添加)'}`);
+  ensureWinShortcut();
   if (isSEA && !process.env.KIMI_NO_OPEN) openBrowser(`http://127.0.0.1:${PORT}/`);
 });

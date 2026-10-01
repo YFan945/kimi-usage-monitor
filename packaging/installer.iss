@@ -1,7 +1,7 @@
-; Kimi Code 用量监控 — Windows 安装包脚本（Inno Setup）
+; Kimi Monitor — Windows 安装包脚本（Inno Setup）
 ; 构建：ISCC.exe packaging\installer.iss
-#define MyAppName "Kimi Code 用量监控"
-#define MyAppVersion "1.0.0"
+#define MyAppName "Kimi Monitor"
+#define MyAppVersion "1.0.1"
 #define MyAppPublisher "YFan945"
 #define MyAppURL "https://github.com/YFan945/kimi-usage-monitor"
 #define SourceDir ".."
@@ -32,9 +32,6 @@ CloseApplications=yes
 [Languages]
 Name: "chinese"; MessagesFile: "compiler:Languages\ChineseSimplified.isl"
 
-[Tasks]
-Name: "desktopicon"; Description: "创建桌面快捷方式"; GroupDescription: "附加任务："
-
 [Files]
 Source: "{#SourceDir}\dist\KimiMonitor.exe"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\public\favicon.ico"; DestDir: "{app}"; DestName: "KimiMonitor.ico"; Flags: ignoreversion
@@ -42,11 +39,11 @@ Source: "{#SourceDir}\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Kimi Code 用量监控"; Filename: "{app}\KimiMonitor.exe"; IconFilename: "{app}\KimiMonitor.ico"; Comment: "Kimi Code 用量监控"
-Name: "{autodesktop}\Kimi Code 用量监控"; Filename: "{app}\KimiMonitor.exe"; IconFilename: "{app}\KimiMonitor.ico"; Comment: "Kimi Code 用量监控"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}"; Filename: "{app}\KimiMonitor.exe"; IconFilename: "{app}\KimiMonitor.ico"; Comment: "{#MyAppName}"
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\KimiMonitor.exe"; IconFilename: "{app}\KimiMonitor.ico"; Comment: "{#MyAppName}"
 
 [Run]
-Filename: "{app}\KimiMonitor.exe"; Description: "立即启动 Kimi Code 用量监控"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\KimiMonitor.exe"; Description: "立即启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent
 
 [UninstallRun]
 Filename: "{sys}\taskkill.exe"; Parameters: "/IM KimiMonitor.exe /F"; Flags: runhidden; RunOnceId: "KillMonitor"

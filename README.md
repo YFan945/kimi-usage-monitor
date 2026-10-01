@@ -1,60 +1,96 @@
-# Kimi Code 用量监控（桌面便携版）
+# Kimi Code 用量监控（Kimi Monitor）
 
-本地桌面应用，监控 Kimi Code 的 API 调用次数与 token 消耗，支持任意时段筛选、按模型/项目筛选、双主题。
+本地桌面应用，监控 [Kimi Code](https://www.kimi.com/)（月之暗面 CLI）的 API 调用次数与 token 消耗。
+零依赖 Node 服务 + 单页前端，支持任意时段筛选、按模型/项目多选筛选、GitHub 风格热力总览、双主题。
 
-## 下载安装
+## 下载安装（成品包）
 
-到 [Releases](../../releases/latest) 页面下载：
+到 [Releases](../../releases/latest) 页面下载，无需自己构建：
 
 | 文件 | 平台 | 用法 |
 |---|---|---|
-| `KimiMonitor-Setup-1.0.0.exe` | Windows 10/11 x64 | **安装版（推荐）**：双击安装 → 开始菜单/桌面快捷方式；卸载走"设置 → 应用 → 已安装的应用" |
-| `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"） |
+| `KimiMonitor-Setup-1.0.1.exe` | Windows 10/11 x64 | **安装版（推荐）**：双击安装 → 开始菜单/桌面快捷方式；卸载走"设置 → 应用 → 已安装的应用" |
+| `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"）；首次运行自动在桌面创建「Kimi Monitor」快捷方式 |
 | `KimiMonitor-Windows-Portable.zip` | Windows | 绿色文件夹版，解压后双击 `启动监控.bat` |
 | `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「Kimi Monitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
 
-也可以直接克隆本仓库用 `node server.js` 运行（见下文"文件夹版移植"）。
+## 如何使用
 
-## 桌面启动
+### 启动
 
-**双击 `启动监控.bat`** —— 会启动本地服务并以独立窗口打开（Edge 应用模式，无地址栏，像普通桌面程序）。
+- **源码运行**：装好 Node.js（≥ 18）后运行 `node server.js`，浏览器打开 <http://127.0.0.1:43110>
+- **桌面窗口**：双击 `启动监控.bat` —— 启动本地服务并以 Edge 应用模式独立窗口打开（无地址栏，像普通桌面程序；没装 Edge 则用默认浏览器）
+- 换端口：`node server.js --port 8080`，或设环境变量 `KIMI_MONITOR_PORT`
 
-- 关闭窗口不会停止服务；要停止请双击 `停止监控.bat`，或点页面右上角"退出"
-- 重复双击启动脚本无副作用（端口占用时自动复用已在运行的服务）
-- 换端口：`node server.js --port 8080`（端口会写进 port.txt 供脚本使用）
+### 停止
 
-## 单文件安装包（dist\ 目录）
+关闭窗口不会停止后台服务。停止方式任选其一：
 
-| 文件 | 平台 | 用法 |
-|---|---|---|
-| `KimiMonitor-Windows-x64.exe` | Windows 10/11 x64 | 单文件，双击即用：自动起服务 + 弹出应用窗口；首次运行会在 exe 旁边生成 config.json 并进入初始化引导 |
-| `Kimi-Monitor-macOS.tar.gz` | macOS 11+（Apple Silicon / Intel 双架构） | 解压得到「Kimi Monitor.app」，右键 → 打开（首次需绕过 Gatekeeper，见包内说明），启动后自动开浏览器 |
+- 双击 `停止监控.bat`
+- 点页面右上角"退出"
 
-两个包都把服务端与页面资源打进/放进程内部，数据目录通过首次引导或页面右上角"数据目录"配置，配置文件保存在程序旁边（Windows）或 App 沙盒旁（macOS）。
+重复运行启动脚本无副作用：检测到端口被占用时新进程会自动退出，复用已在运行的服务。
 
-自己重新构建 Windows exe：`node --experimental-sea-config sea-config.json` → 复制 node.exe → `npx postject` 注入 blob（见 sea-config.json）；
-构建 Windows 安装包：安装 [Inno Setup](https://jrsoftware.org/isinfo.php) 后运行 `ISCC.exe packaging\installer.iss`（产物在 `dist\`）。
+### 首次运行引导
 
-## 文件夹版移植（不用单文件包时）
+第一次启动会进入初始化引导，自动探测默认数据目录 `C:\Users\<用户名>\.kimi-code\sessions`（macOS 为 `~/.kimi-code/sessions`）并显示会话统计，确认即可；Kimi Code 数据不在常用位置就选"指定其他目录"手填。
 
-把整个 `kimi-usage-monitor` 文件夹拷过去即可：
+### 数据目录
 
-1. 目标电脑装了 Node.js → 直接双击 `启动监控.bat`
-2. 没装 Node → 从任意一台装了 Node 的电脑复制 `node.exe` 放进 `runtime\` 子文件夹，再双击启动
-3. **首次会弹出初始化引导**：自动探测默认位置 `C:\Users\<用户名>\.kimi-code\sessions` 并显示会话统计，确认即可；不在常用位置就选"指定其他目录"手填
-4. （可选）双击 `创建桌面快捷方式.bat`，把带图标的快捷方式放到桌面
+- 页面右上角"数据目录"面板可随时增删扫描目录，修改后立即重新扫描；不存在的路径会被自动剔除
+- 路径结构需为 `…\sessions\<工作区>\<会话>\agents`，也兼容直接指向某个会话集合目录
+- 扫描目录保存在 `config.json`（源码运行 = 项目目录；Windows exe = exe 旁边；macOS = `~/Library/Application Support/KimiMonitor`），其余界面状态（主题、时段、筛选）保存在浏览器 localStorage
 
-扫描目录保存在程序目录的 `config.json`，其余状态（主题、时段、筛选）保存在目标电脑的浏览器里。之后可在页面右上角"数据目录"里随时增删目录。
+## 打包成桌面应用
 
-## 应用图标
+仓库只含源代码，以下是从零复现各成品包的步骤（在 Windows 上构建）。
 
-`public/icon.png` / `public/favicon.ico` 由 `icon-512.png` 生成，Edge 应用窗口、任务栏和浏览器标签页均显示该图标；`创建桌面快捷方式.bat` 生成的桌面快捷方式同样使用它。
+### 1. Windows 单文件 exe（Node SEA）
 
-## 数据目录说明
+把页面资源内嵌进 Node 官方单文件应用（SEA）机制：
 
-- 可添加多个目录，路径结构需为 `…\sessions\<工作区>\<会话>\agents`（也兼容直接指向某个会话集合目录）
-- 修改后立即重新扫描；无效路径（不存在）会被自动剔除
-- 会话的工作目录取自 `state.json` 的 `cwd`，缺失时用 `session_index.jsonl` 的 `workDir` 兜底
+```bat
+mkdir dist
+node --experimental-sea-config sea-config.json
+copy "%CD%\..\node\node.exe" dist\KimiMonitor.exe   &rem 或复制任意 Node ≥ 20.12 的 node.exe
+npx postject dist\KimiMonitor.exe NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce6eababc5e6c1af2e46e1b3d2d4cc4
+```
+
+产物 `dist\KimiMonitor.exe`（约 90MB）双击即用：自动起服务、以 Edge 应用模式开窗、首次运行自动在桌面创建「Kimi Monitor」快捷方式（只创建一次，由 config.json 的 `shortcut` 字段标记）；配置写在 exe 旁边。
+
+- `sea-config.json` 声明了内嵌资产（`index.html` / `icon.png` / `favicon.ico`），`server.js` 通过 `node:sea` 检测自己是否运行在 SEA 模式
+- 坑：不要用 rcedit 给这个 exe 换图标（90MB 的 Node 本体会让它挂死）；图标通过旁边的 `.ico` 文件给快捷方式用
+
+### 2. Windows 安装包（Inno Setup）
+
+先按上一步生成 `dist\KimiMonitor.exe`，再安装 [Inno Setup](https://jrsoftware.org/isinfo.php)（中文语言包随附），运行：
+
+```bat
+ISCC.exe packaging\installer.iss
+```
+
+产物 `dist\KimiMonitor-Setup-1.0.1.exe`：免管理员权限安装到 `%LOCALAPPDATA%\Programs\KimiMonitor`，无条件创建开始菜单 + 桌面快捷方式，带"应用和功能"卸载项（卸载时会强制结束运行中的进程并清理配置文件）。版本号在 `packaging\installer.iss` 顶部 `#define` 处修改。
+
+### 3. macOS 应用包（.app）
+
+仓库未内置 mac 构建脚本，手工组装（在任意能跑 macOS 的机器上）：
+
+1. 从 [nodejs.org](https://nodejs.org/dist/) 下载 macOS **arm64 与 x64** 两个官方 tarball（v22 LTS），解出各自 `bin/node`，存为 `Resources/bin/node-darwin-arm64`、`Resources/bin/node-darwin-x64`
+2. 把 `server.js` 与 `public/` 拷进 `Resources/app/`
+3. `Contents/MacOS/kimi-monitor` 写一个启动脚本：按 `uname -m` 选对应架构的 node 执行 `Resources/app/server.js`，然后打开浏览器
+4. `Info.plist` 设 `CFBundleExecutable=kimi-monitor`、`CFBundleIconFile=icon.icns`、`CFBundleName=Kimi Monitor`
+5. 图标 `icon.icns` 由 `icon-512.png` 转换（Python Pillow 可直接生成 ICNS）
+6. 再包一层「卸载.command」脚本（`pkill` 掉服务 + 删除 .app 与 `~/Library/Application Support/KimiMonitor`），最后：
+
+```bash
+tar czf dist/Kimi-Monitor-macOS.tar.gz "Kimi Monitor.app" 卸载.command
+```
+
+未做公证，首次打开需右键 → 打开，或 `xattr -cr "Kimi Monitor.app"`。
+
+### 4. Windows 绿色文件夹版（zip）
+
+把整个项目文件夹拷到目标机器，在没有 Node 的电脑上从 [nodejs.org](https://nodejs.org/download/release/) 的 Windows x64 zip 包里取出 `node.exe` 放进 `runtime\` 子文件夹（`启动监控.bat` 会自动识别），连同 bat 脚本一起打包成 zip 即可。
 
 ## 功能
 
@@ -62,13 +98,14 @@
 - **时段**：今天 / 24 小时 / 7 天 / 30 天 / 全部，或自定义起止时间；图表时间轴始终覆盖完整所选时段，空时段显示明确提示
 - **趋势图**：按天或按小时的堆叠柱状图，默认叠加缓存读取（紫色，可取消）；"着色"可切换按类型（输出/输入/缓存）/按模型（每模型一色，悬停看逐模型分解）；常规时段自适应铺满不出现横向滚动
 - **按模型/项目筛选（多选）**：趋势图上方下拉多选，或点击"按模型/按项目"横条行加入/移出筛选；多个条件叠加生效
-- **主题**：自动（跟随系统）/ 浅色 / 深色；界面状态（时段、筛选、主题等）自动记忆
+- **主题**：自动（跟随系统）/ 浅色 / 深色；界面状态自动记忆
 - **自动刷新**：每 10 秒增量扫描（只重读有变化的 wire.jsonl）
 
 ## 数据口径
 
 数据来自各会话 `agents/*/wire.jsonl` 的 `usage.record` 事件——每次 LLM 请求（含子 agent）一条，
 字段为 `inputOther` / `output` / `inputCacheRead` / `inputCacheCreation`。只统计 token 数，不代表费用。
+会话的工作目录取自 `state.json` 的 `cwd`，缺失时用 `session_index.jsonl` 的 `workDir` 兜底。
 
 ## 开源协议
 
