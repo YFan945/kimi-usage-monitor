@@ -53,7 +53,13 @@
 mkdir dist
 node --experimental-sea-config sea-config.json
 copy "%CD%\..\node\node.exe" dist\KimiMonitor.exe   &rem 或复制任意 Node ≥ 20.12 的 node.exe
-npx postject dist\KimiMonitor.exe NODE_SEA_BLOB sea-prep.blob --sentinel-fuse NODE_SEA_FUSE_fce6eababc5e6c1af2e46e1b3d2d4cc4
+npx postject dist\KimiMonitor.exe NODE_SEA_BLOB sea-prep.blob --sentinel-fuse %FUSE%
+```
+
+哨兵 fuse 随 Node 版本不同：Node 20/22 为 `NODE_SEA_FUSE_fce6eababc5e6c1af2e46e1b3d2d4cc4`，Node 24 为 `NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2`。查你本机 node.exe 的实际值：
+
+```bat
+grep -abo NODE_SEA_FUSE "C:\Program Files\nodejs\node.exe"
 ```
 
 产物 `dist\KimiMonitor.exe`（约 90MB）双击即用：自动起服务、以 Edge 应用模式开窗、首次运行自动在桌面创建「Kimi Monitor」快捷方式（只创建一次，由 config.json 的 `shortcut` 字段标记）；配置写在 exe 旁边。
