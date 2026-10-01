@@ -57,12 +57,15 @@ select{background:var(--panel2);border:1px solid var(--border);border-radius:6px
 @media(max-width:860px){.grid2{grid-template-columns:1fr}}
 .chart-wrap{overflow-x:auto;position:relative}
 .chart-inner{width:max-content;min-width:100%}
-.bars{display:flex;align-items:flex-end;gap:3px;height:240px;padding-top:8px}
 .bar{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column-reverse;cursor:pointer;position:relative}
-.chart-inner.dense .bar{min-width:5px}
+.chart-inner.dense .bar{min-width:var(--minbar,5px)}
 .bar>div{width:100%}
 .bar:hover{outline:1px solid var(--bar-hover)}
 .seg-out{background:var(--c-out)}.seg-in{background:var(--c-in)}.seg-cc{background:var(--c-cc)}.seg-cr{background:var(--c-cr)}
+.trend-area{display:flex;align-items:stretch}
+.y-axis{width:56px;flex:0 0 auto;position:relative;height:248px}
+.y-axis span{position:absolute;right:10px;transform:translateY(50%);line-height:1;font-size:10px;color:var(--muted);white-space:nowrap}
+.bars{display:flex;align-items:flex-end;gap:3px;height:240px;padding-top:8px;background:repeating-linear-gradient(to top,var(--grid,rgba(128,128,128,.18)) 0,var(--grid,rgba(128,128,128,.18)) 1px,transparent 1px,transparent calc(240px/4))}
 .xlabels{position:relative;height:16px;margin-top:6px}
 .xlabels span{position:absolute;top:0;line-height:16px;color:var(--muted);font-size:10px;white-space:nowrap}
 .y-max{color:var(--muted);font-size:11px;text-align:right;margin-bottom:-4px}
@@ -175,15 +178,7 @@ footer code{color:var(--text)}
   </div>
 
   <div class="card">
-    <h2>时段选择
-      <span class="chips" id="presets">
-        <span class="chip" data-p="today">今天</span>
-        <span class="chip" data-p="24h">最近24小时</span>
-        <span class="chip" data-p="7d">最近7天</span>
-        <span class="chip" data-p="30d">最近30天</span>
-        <span class="chip on" data-p="all">全部</span>
-      </span>
-    </h2>
+    <h2>时段选择</h2>
     <div class="range-row">
       <input type="datetime-local" id="from"> <span class="sep">至</span> <input type="datetime-local" id="to">
       <button class="primary" id="applyCustom">应用</button>
@@ -194,6 +189,13 @@ footer code{color:var(--text)}
         <option value="day">按天</option>
       </select>
       <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--muted)"><input type="checkbox" id="includeCr" checked> 包含缓存读取</label>
+      <span class="chips" id="presets">
+        <span class="chip" data-p="today">今天</span>
+        <span class="chip" data-p="24h">最近24小时</span>
+        <span class="chip" data-p="7d">最近7天</span>
+        <span class="chip" data-p="30d">最近30天</span>
+        <span class="chip on" data-p="all">全部</span>
+      </span>
     </div>
     <div class="range-info" id="rangeInfo"></div>
   </div>
@@ -220,11 +222,14 @@ footer code{color:var(--text)}
       <button id="fltClear" style="display:none">清除筛选</button>
     </div>
     <div class="y-max" id="yMax"></div>
-    <div class="chart-wrap" id="trendWrap">
-      <div class="empty-note" id="emptyNote" style="display:none">该时段内没有 API 调用</div>
-      <div class="chart-inner" id="trendInner">
-        <div class="bars" id="bars"></div>
-        <div class="xlabels" id="xlabels"></div>
+    <div class="trend-area">
+      <div class="y-axis" id="yAxis"></div>
+      <div class="chart-wrap" id="trendWrap">
+        <div class="empty-note" id="emptyNote" style="display:none">该时段内没有 API 调用</div>
+        <div class="chart-inner" id="trendInner">
+          <div class="bars" id="bars"></div>
+          <div class="xlabels" id="xlabels"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -591,14 +596,17 @@ function drawCharts(recs, sumN) {
     if (cur.getTime() > axisEnd) { const k2 = keyOf(cur); if (!map.has(k2)) map.set(k2, { i: 0, o: 0, r: 0, c: 0, n: 0 }); break; }
   }
   const arr = [...map.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1);
-  // ≤180 个桶自适应铺满容器（48h 按小时 / 30 天按天绝不出现横向滚动）；
-  // 更长的自定义时段才启用最小柱宽 + 横向滚动
-  const dense = arr.length > 180;
-  $('#trendInner').classList.toggle('dense', dense);
+  // 柱状图可视范围上限：按小时最多铺 48 桶、按天最多 60 桶，超出后按最小柱宽横向滚动
+  const maxBuckets = gran === 'hour' ? 48 : 60;
+  const dense = arr.length > maxBuckets;
+  const inner = $('#trendInner');
+  inner.classList.toggle('dense', dense);
   const w = Math.max(300, $('#trendWrap').clientWidth || 1100);
-  const every = dense ? 10
-    : Math.max(1, Math.ceil(arr.length / Math.max(1, Math.floor(w / 80))));
-  const labelOf = k => gran === 'hour' ? k.slice(5, 10) + ' ' + k.slice(11) : k.slice(5);
+  if (dense) inner.style.setProperty('--minbar', (w / maxBuckets).toFixed(2) + 'px');
+  else inner.style.removeProperty('--minbar');
+  const bucketW = dense ? w / maxBuckets : w / arr.length;
+  const every = Math.max(1, Math.round(80 / bucketW));
+  const labelOf = k => gran === 'hour' ? k.slice(5, 10) + ' ' + k.slice(11, 13) + ':00' : k.slice(5);
   // 标签绝对定位在轴层上（居中对齐桶位、首尾贴边），不受窄桶裁剪
   const labelSpans = () => {
     const n = arr.length; if (!n) return '';
@@ -616,6 +624,7 @@ function drawCharts(recs, sumN) {
   $('#emptyNote').style.display = sumN === 0 ? 'flex' : 'none';
 
   if (sumN === 0) {
+    $('#yAxis').innerHTML = '';
     $('#yMax').textContent = '';
     // 空柱同样携带数据属性，悬停可见"日期 + 各项 0"的提示
     $('#bars').innerHTML = arr.map(([k, b]) => `<div class="bar" data-k="${k}" data-i="${b.i}" data-o="${b.o}" data-r="${b.r}" data-c="${b.c}" data-n="${b.n}"><div style="height:2px;background:var(--empty)"></div></div>`).join('');
@@ -625,6 +634,9 @@ function drawCharts(recs, sumN) {
 
   const max = Math.max(1, ...arr.map(([, b]) => b.o + b.i + b.c + (incCr ? b.r : 0)));
   $('#yMax').textContent = '峰值 ' + fmt(max) + ' tokens';
+  // y 轴刻度：0、1/4、1/2、3/4、峰值，与网格线对齐（.bars 内容区高 240px）
+  $('#yAxis').innerHTML = [1, .75, .5, .25, 0]
+    .map(p => `<span style="bottom:${p * 240}px">${p === 0 ? '0' : fmt(max * p)}</span>`).join('');
   $('#bars').innerHTML = arr.map(([k, b]) => {
     const total = b.o + b.i + b.c + (incCr ? b.r : 0);
     const h = v => (v / max * 100);
