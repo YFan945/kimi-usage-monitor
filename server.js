@@ -97,7 +97,8 @@ function startTray() {
       "$openItem = $menu.Items.Add('打开窗口')",
       "$openItem.add_Click({ try { Invoke-RestMethod -Method Post -Uri \"$base/api/open\" | Out-Null } catch {} })",
       "$quitItem = $menu.Items.Add('退出')",
-      "$quitItem.add_Click({ try { Invoke-RestMethod -Method Post -Uri \"$base/api/quit\" | Out-Null } catch {} })",
+      // 直接按 PID 杀服务进程，比 HTTP 退出更可靠；随后立即收起托盘图标
+      `$quitItem.add_Click({ try { Stop-Process -Id ${process.pid} -Force -ErrorAction Stop } catch {}; $ni.Visible = $false; $timer.Stop(); [System.Windows.Forms.Application]::Exit() })`,
       "$ni.ContextMenuStrip = $menu",
       "$ni.add_Click({ if ($_.Button -eq [System.Windows.Forms.MouseButtons]::Left) { try { Invoke-RestMethod -Method Post -Uri \"$base/api/open\" | Out-Null } catch {} } })",
       "$timer = New-Object System.Windows.Forms.Timer",

@@ -9,7 +9,7 @@
 
 | 文件 | 平台 | 用法 |
 |---|---|---|
-| `KimiMonitor-Setup-1.1.1.exe` | Windows 10/11 x64 | **安装版（推荐）**：双击安装 → 开始菜单/桌面快捷方式；卸载走"设置 → 应用 → 已安装的应用" |
+| `KimiMonitor-Setup-1.1.2.exe` | Windows 10/11 x64 | **安装版（推荐）**：双击安装 → 开始菜单/桌面快捷方式；卸载走"设置 → 应用 → 已安装的应用" |
 | `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"）；首次运行自动在桌面创建「KimiMonitor」快捷方式 |
 | `KimiMonitor-Windows-Portable.zip` | Windows | 绿色文件夹版，解压后双击 `启动监控.bat` |
 | `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「KimiMonitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
@@ -84,7 +84,7 @@ grep -abo NODE_SEA_FUSE "C:\Program Files\nodejs\node.exe"
 ISCC.exe packaging\installer.iss
 ```
 
-产物 `dist\KimiMonitor-Setup-1.1.1.exe`：免管理员权限安装到 `%LOCALAPPDATA%\Programs\KimiMonitor`，安装时可勾选是否创建开始菜单 / 桌面快捷方式（默认都创建），带"应用和功能"卸载项（卸载时会强制结束运行中的进程并清理配置文件）。版本号在 `packaging\installer.iss` 顶部 `#define` 处修改。
+产物 `dist\KimiMonitor-Setup-1.1.2.exe`：免管理员权限安装到 `%LOCALAPPDATA%\Programs\KimiMonitor`，安装时可勾选是否创建开始菜单 / 桌面快捷方式（默认都创建），带"应用和功能"卸载项（卸载时会强制结束运行中的进程并清理配置文件）。版本号在 `packaging\installer.iss` 顶部 `#define` 处修改。
 
 ### 3. macOS 应用包（.app）
 
