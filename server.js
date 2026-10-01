@@ -62,7 +62,7 @@ function saveConfig() {
 
 // 单文件 exe（SEA）模式下首次运行自动创建桌面快捷方式（仅 Windows；由 config.json 的 shortcut 标记保证只创建一次）
 function ensureWinShortcut() {
-  if (process.platform !== 'win32' || !isSEA || CFG.shortcut) return;
+  if (process.platform !== 'win32' || !isSEA || CFG.shortcut || process.env.KIMI_NO_SHORTCUT) return;
   CFG.shortcut = true;
   saveConfig();
   try {

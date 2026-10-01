@@ -43,7 +43,16 @@
 
 ## 打包成桌面应用
 
-仓库只含源代码，以下是从零复现各成品包的步骤（在 Windows 上构建）。
+### 一键打包（推荐）
+
+双击 `build.bat`（或命令行运行 `node build.js`），自动完成：读取版本号 → 构建单文件 exe → 冒烟测试 → 安装包 → 绿色版 zip，产物汇总在 `out\`。可选参数：
+
+- `--mac`：额外构建 macOS .app 包（自动下载 node 官方双架构二进制，约 100MB）
+- `--release`：构建后把产物上传到 GitHub Release v<版本号>（已存在该 Release 则覆盖资产）
+
+依赖：Node.js ≥ 20（必装）；Inno Setup（缺则跳过安装包）；Python + Pillow（仅 mac 包图标需要）。
+
+以下是从零手工复现各成品包的步骤（在 Windows 上构建）。
 
 ### 1. Windows 单文件 exe（Node SEA）
 
