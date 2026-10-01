@@ -361,20 +361,24 @@ function openBrowser(u) {
   } catch { }
 }
 
+// GUI 子系统（无控制台窗口）下 stdout 无效，写日志必须兜异常
+const log = (...a) => { try { console.log(...a); } catch { } };
+const logErr = (...a) => { try { console.error(...a); } catch { } };
+
 server.on('error', e => {
   if (e && e.code === 'EADDRINUSE') {
-    console.log(`[kimi-usage-monitor] 端口 ${PORT} 已被占用（可能服务已在运行），直接复用。`);
+    log(`[kimi-usage-monitor] 端口 ${PORT} 已被占用（可能服务已在运行），直接复用。`);
     if (isSEA && !process.env.KIMI_NO_OPEN) openBrowser(`http://127.0.0.1:${PORT}/`);
     process.exit(0);
   }
-  console.error('[kimi-usage-monitor] 启动失败:', e);
+  logErr('[kimi-usage-monitor] 启动失败:', e);
   process.exit(1);
 });
 
 server.listen(PORT, '127.0.0.1', () => {
   try { if (process.platform === 'win32') fs.writeFileSync(path.join(CONFIG_DIR, 'port.txt'), String(PORT)); } catch { }
-  console.log(`[kimi-usage-monitor] http://127.0.0.1:${PORT}`);
-  console.log(`[kimi-usage-monitor] 数据目录: ${CFG.roots.join(' ; ') || '(未配置，请打开页面右上角"数据目录"添加)'}`);
+  log(`[kimi-usage-monitor] http://127.0.0.1:${PORT}`);
+  log(`[kimi-usage-monitor] 数据目录: ${CFG.roots.join(' ; ') || '(未配置，请打开页面右上角"数据目录"添加)'}`);
   ensureWinShortcut();
   startTray();
   if (isSEA && !process.env.KIMI_NO_OPEN) openBrowser(`http://127.0.0.1:${PORT}/`);

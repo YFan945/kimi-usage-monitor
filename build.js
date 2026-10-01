@@ -73,6 +73,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   log('注入 postject（约半分钟）...');
   run('npx', ['-y', 'postject', 'dist/KimiMonitor.exe', 'NODE_SEA_BLOB', 'sea-prep.blob', '--sentinel-fuse', fuse], { cwd: ROOT, shell: true });
+  // PE 头 Subsystem: 3(控制台)→2(GUI)，双击/安装后不再弹出黑色控制台窗口
+  {
+    const buf = fs.readFileSync(path.join(DIST, 'KimiMonitor.exe'));
+    const pe = buf.readUInt32LE(0x3c);
+    if (buf.readUInt16LE(pe + 0x5c) === 3) { // PE32+ OptionalHeader.Subsystem
+      buf.writeUInt16LE(2, pe + 0x5c);
+      fs.writeFileSync(path.join(DIST, 'KimiMonitor.exe'), buf);
+      ok('已切换为 GUI 子系统（无控制台窗口）');
+    } else console.warn('[33m[build] ! 未找到控制台子系统标记，跳过 GUI 补丁[0m');
+  }
   ok(`dist/KimiMonitor.exe（${(fs.statSync(path.join(DIST, 'KimiMonitor.exe')).size / 1048576).toFixed(1)} MB）`);
 
   // ---------- 2. 冒烟测试 ----------
