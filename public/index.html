@@ -556,7 +556,6 @@ function pickGran() {
   for (const r of DATA.records) if (r.t > 0 && r.t < minT) minT = r.t;
   const span = (range.end ?? now) - (range.start ?? (minT !== Infinity ? minT : now));
   if (g === 'auto') return span <= 48 * 36e5 ? 'hour' : 'day';
-  if (g === 'hour' && span > 90 * 864e5) return 'day'; // 手动按小时但跨度过大，退回按天
   return g;
 }
 
@@ -587,7 +586,7 @@ function drawCharts(recs, sumN) {
     ? new Date(new Date(axisStart).setMinutes(0, 0, 0))
     : new Date(new Date(axisStart).setHours(0, 0, 0, 0));
   const endKey = keyOf(new Date(axisEnd));
-  for (let g = 0; g < 2400; g++) {
+  for (let g = 0; g < 100000; g++) {
     const key = keyOf(cur);
     if (!map.has(key)) map.set(key, { i: 0, o: 0, r: 0, c: 0, n: 0 });
     if (key === endKey) break;
