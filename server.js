@@ -20,6 +20,9 @@ const ASSETS = isSEA ? {
   'index.html': Buffer.from(SEA.getAsset('index.html')),
   'icon.png': Buffer.from(SEA.getAsset('icon.png')),
   'favicon.ico': Buffer.from(SEA.getAsset('favicon.ico')),
+  'manifest.webmanifest': Buffer.from(SEA.getAsset('manifest.webmanifest')),
+  'icon-192.png': Buffer.from(SEA.getAsset('icon-192.png')),
+  'icon-512.png': Buffer.from(SEA.getAsset('icon-512.png')),
 } : null;
 
 const HOME = process.env.USERPROFILE || process.env.HOME;
@@ -295,7 +298,7 @@ function getData() {
 }
 
 // ---------- HTTP ----------
-const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon' };
+const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 
 function json(res, body) {
   res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });

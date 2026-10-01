@@ -5,6 +5,9 @@
   "assets": {
     "index.html": "public/index.html",
     "icon.png": "public/icon.png",
-    "favicon.ico": "public/favicon.ico"
+    "favicon.ico": "public/favicon.ico",
+    "manifest.webmanifest": "public/manifest.webmanifest",
+    "icon-192.png": "public/icon-192.png",
+    "icon-512.png": "public/icon-512.png"
   }
 }

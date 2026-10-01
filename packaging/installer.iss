@@ -1,7 +1,7 @@
 ; KimiMonitor — Windows 安装包脚本（Inno Setup）
 ; 构建：ISCC.exe packaging\installer.iss
 #define MyAppName "KimiMonitor"
-#define MyAppVersion "1.1.3"
+#define MyAppVersion "1.2.0"
 #define MyAppPublisher "YFan945"
 #define MyAppURL "https://github.com/YFan945/kimi-usage-monitor"
 #define SourceDir ".."
