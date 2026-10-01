@@ -26,7 +26,7 @@ const HOME = process.env.USERPROFILE || process.env.HOME;
 // 配置目录：Windows 单文件 exe → exe 旁（便携）；macOS .app → Application Support；纯 node 运行 → 项目目录
 let CONFIG_DIR;
 if (isSEA) CONFIG_DIR = path.dirname(process.execPath);
-else if (process.platform === 'darwin') CONFIG_DIR = path.join(os.homedir(), 'Library', 'Application Support', 'Kimi-CodeMonitor');
+else if (process.platform === 'darwin') CONFIG_DIR = path.join(os.homedir(), 'Library', 'Application Support', 'KimiMonitor');
 else CONFIG_DIR = __dirname;
 try { fs.mkdirSync(CONFIG_DIR, { recursive: true }); } catch { }
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -70,8 +70,52 @@ function ensureWinShortcut() {
     const exe = process.execPath;
     const ico = path.join(CONFIG_DIR, 'KimiMonitor.ico');
     try { fs.writeFileSync(ico, ASSETS['favicon.ico']); } catch { }
-    const scr = `$d=[Environment]::GetFolderPath('Desktop');$ws=New-Object -ComObject WScript.Shell;$l=$ws.CreateShortcut($d+'\\Kimi-CodeMonitor.lnk');$l.TargetPath='${exe}';$l.WorkingDirectory='${path.dirname(exe)}';$l.IconLocation='${ico}';$l.Save()`;
+    const scr = `$d=[Environment]::GetFolderPath('Desktop');$ws=New-Object -ComObject WScript.Shell;$l=$ws.CreateShortcut($d+'\\KimiMonitor.lnk');$l.TargetPath='${exe}';$l.WorkingDirectory='${path.dirname(exe)}';$l.IconLocation='${ico}';$l.Save()`;
     cp.exec(`powershell -NoProfile -ExecutionPolicy Bypass -Command "${scr}"`, { windowsHide: true }, () => { });
+  } catch { }
+}
+
+// ---------- 托盘图标（Windows）：窗口关闭后在后台运行，左键/右键菜单可打开窗口或退出 ----------
+function startTray() {
+  if (process.platform !== 'win32' || process.env.KIMI_NO_TRAY) return;
+  try {
+    let ico = path.join(PUBLIC_DIR, 'favicon.ico');
+    if (isSEA) {
+      ico = path.join(CONFIG_DIR, 'KimiMonitor.ico');
+      try { fs.writeFileSync(ico, ASSETS['favicon.ico']); } catch { }
+    }
+    const ps = [
+      "Add-Type -AssemblyName System.Windows.Forms",
+      "Add-Type -AssemblyName System.Drawing",
+      `$ico = New-Object System.Drawing.Icon('${ico.replace(/'/g, "''")}')`,
+      "$ni = New-Object System.Windows.Forms.NotifyIcon",
+      "$ni.Icon = $ico",
+      "$ni.Text = 'KimiMonitor — 点击打开'",
+      "$ni.Visible = $true",
+      `$base = 'http://127.0.0.1:${PORT}'`,
+      "$menu = New-Object System.Windows.Forms.ContextMenuStrip",
+      "$openItem = $menu.Items.Add('打开窗口')",
+      "$openItem.add_Click({ try { Invoke-RestMethod -Method Post -Uri \"$base/api/open\" | Out-Null } catch {} })",
+      "$quitItem = $menu.Items.Add('退出')",
+      "$quitItem.add_Click({ try { Invoke-RestMethod -Method Post -Uri \"$base/api/quit\" | Out-Null } catch {} })",
+      "$ni.ContextMenuStrip = $menu",
+      "$ni.add_Click({ if ($_.Button -eq [System.Windows.Forms.MouseButtons]::Left) { try { Invoke-RestMethod -Method Post -Uri \"$base/api/open\" | Out-Null } catch {} } })",
+      "$timer = New-Object System.Windows.Forms.Timer",
+      "$timer.Interval = 3000",
+      "$timer.add_Tick({ try { Invoke-RestMethod -Uri \"$base/api/data\" -TimeoutSec 2 | Out-Null } catch { $ni.Visible = $false; $timer.Stop(); [System.Windows.Forms.Application]::Exit() } })",
+      "$timer.Start()",
+      "[System.Windows.Forms.Application]::Run()",
+      "$ni.Dispose()",
+    ].join("\r\n");
+    const enc = Buffer.from(ps, 'utf16le').toString('base64');
+    // 注意：不能用 detached（PowerShell 无控制台会秒退）；stdio 必须是 pipe 并消费掉——
+    // 'ignore' 的无效句柄同样会让 powershell 宿主静默退出（exit 0）
+    const tray = require('child_process').spawn('powershell',
+      ['-NoProfile', '-Sta', '-ExecutionPolicy', 'Bypass', '-EncodedCommand', enc],
+      { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] }
+    );
+    tray.stdout.resume(); tray.stderr.resume();
+    tray.unref();
   } catch { }
 }
 // 引导期对默认目录做一次探测（缓存结果，避免每次轮询都全量扫描）
@@ -272,6 +316,12 @@ const server = http.createServer((req, res) => {
     });
     return;
   }
+  if (url.pathname === '/api/open' && req.method === 'POST') {
+    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+    res.end('ok');
+    openBrowser(`http://127.0.0.1:${PORT}/`);
+    return;
+  }
   if (url.pathname === '/api/quit' && req.method === 'POST') {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('bye');
@@ -326,5 +376,6 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`[kimi-usage-monitor] http://127.0.0.1:${PORT}`);
   console.log(`[kimi-usage-monitor] 数据目录: ${CFG.roots.join(' ; ') || '(未配置，请打开页面右上角"数据目录"添加)'}`);
   ensureWinShortcut();
+  startTray();
   if (isSEA && !process.env.KIMI_NO_OPEN) openBrowser(`http://127.0.0.1:${PORT}/`);
 });

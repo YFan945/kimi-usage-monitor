@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 'use strict';
 /*
- * Kimi-CodeMonitor 一键打包脚本（零依赖，Node >= 20）
+ * KimiMonitor 一键打包脚本（零依赖，Node >= 20）
  * 用法：
  *   node build.js            构建全部 Windows 产物到 dist\（单文件 exe + 安装包 + 绿色版 zip）+ 冒烟测试
  *   node build.js --mac      额外构建 macOS .app 包（需联网下载 node 官方二进制，约 100MB）
@@ -54,7 +54,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
   const issText = fs.readFileSync(path.join(ROOT, 'packaging', 'installer.iss'), 'utf8');
   const VER = (issText.match(/#define MyAppVersion "([^"]+)"/) || [])[1];
   if (!VER) die('无法从 packaging/installer.iss 读取 MyAppVersion');
-  log(`====== Kimi-CodeMonitor v${VER} ======`);
+  log(`====== KimiMonitor v${VER} ======`);
 
   // dist 只做已知产物的 best-effort 清理（可能有用户正在下载等外部占用，不整体删除）
   for (const f of ['KimiMonitor.exe', `KimiMonitor-Setup-${VER}.exe`, 'KimiMonitor-Windows-x64.exe', 'sea-prep.blob', 'config.json', 'port.txt', 'KimiMonitor.ico', 'notes.md'])
@@ -81,7 +81,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     const port = 40000 + Math.floor(Math.random() * 20000);
     const child = spawn(path.join(DIST, 'KimiMonitor.exe'), ['--port', String(port)], {
       cwd: DIST, stdio: 'ignore',
-      env: { ...process.env, KIMI_NO_OPEN: '1', KIMI_NO_SHORTCUT: '1' },
+      env: { ...process.env, KIMI_NO_OPEN: '1', KIMI_NO_SHORTCUT: '1', KIMI_NO_TRAY: '1' },
     });
     let up = false;
     for (let i = 0; i < 30 && !up; i++) {
@@ -153,7 +153,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
       fs.rmSync(path.join(stage, `node-${MAC_NODE_VER}-darwin-${arch}`), { recursive: true, force: true });
       fs.rmSync(tgz, { force: true });
     }
-    const app = path.join(stage, 'Kimi-CodeMonitor.app');
+    const app = path.join(stage, 'KimiMonitor.app');
     fs.mkdirSync(path.join(app, 'Contents', 'MacOS'), { recursive: true });
     fs.mkdirSync(path.join(app, 'Contents', 'Resources', 'bin'), { recursive: true });
     fs.mkdirSync(path.join(app, 'Contents', 'Resources', 'app'), { recursive: true });
@@ -162,7 +162,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     fs.copyFileSync(path.join(ROOT, 'server.js'), path.join(app, 'Contents', 'Resources', 'app', 'server.js'));
     fs.cpSync(path.join(ROOT, 'public'), path.join(app, 'Contents', 'Resources', 'app', 'public'), { recursive: true });
     fs.writeFileSync(path.join(app, 'Contents', 'MacOS', 'kimi-monitor'), `#!/bin/bash
-# Kimi-CodeMonitor — macOS 启动器：选择对应架构的 node 运行 server.js，并打开浏览器
+# KimiMonitor — macOS 启动器：选择对应架构的 node 运行 server.js，并打开浏览器
 DIR="$(cd "$(dirname "$0")" && pwd)"
 RES="$DIR/../Resources"
 case "$(uname -m)" in
@@ -181,8 +181,8 @@ open "http://127.0.0.1:$PORT/"
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-\t<key>CFBundleName</key><string>Kimi-CodeMonitor</string>
-\t<key>CFBundleDisplayName</key><string>Kimi-CodeMonitor</string>
+\t<key>CFBundleName</key><string>KimiMonitor</string>
+\t<key>CFBundleDisplayName</key><string>KimiMonitor</string>
 \t<key>CFBundleIdentifier</key><string>com.yfan945.kimi-monitor</string>
 \t<key>CFBundleVersion</key><string>${VER}</string>
 \t<key>CFBundleShortVersionString</key><string>${VER}</string>
@@ -197,10 +197,10 @@ open "http://127.0.0.1:$PORT/"
 </plist>
 `);
     fs.writeFileSync(path.join(stage, '卸载.command'), `#!/bin/bash
-# Kimi-CodeMonitor 卸载脚本
-pkill -f "node-darwin.*/Kimi-CodeMonitor.app" 2>/dev/null
-rm -rf "/Applications/Kimi-CodeMonitor.app" "$HOME/Library/Application Support/Kimi-CodeMonitor"
-echo "Kimi-CodeMonitor 已卸载。"
+# KimiMonitor 卸载脚本
+pkill -f "node-darwin.*/KimiMonitor.app" 2>/dev/null
+rm -rf "/Applications/KimiMonitor.app" "$HOME/Library/Application Support/KimiMonitor"
+echo "KimiMonitor 已卸载。"
 `);
     const icns = path.join(app, 'Contents', 'Resources', 'icon.icns');
     const r = spawnSync('python', ['-c', 'from PIL import Image;import sys;Image.open(sys.argv[1]).save(sys.argv[2])', path.join(ROOT, 'icon-512.png'), icns]);
@@ -217,7 +217,7 @@ def add(tf,p,arc,mode):
     else:
         with open(p,"rb") as f: tf.addfile(ti,f)
 with tarfile.open(out,"w:gz") as tf:
-    add(tf,os.path.join(stage,"Kimi-CodeMonitor.app"),"Kimi-CodeMonitor.app",0o755)
+    add(tf,os.path.join(stage,"KimiMonitor.app"),"KimiMonitor.app",0o755)
     add(tf,os.path.join(stage,"卸载.command"),"卸载.command",0o755)
 print("tared")`;
     const macTgz = path.join(DIST, 'Kimi-Monitor-macOS.tar.gz');
@@ -245,7 +245,7 @@ print("tared")`;
   if (WANT_RELEASE) {
     const tag = `v${VER}`;
     log(`上传到 GitHub Release ${tag}...`);
-    const notes = `Kimi-CodeMonitor v${VER} 自动发布。\n\n| 文件 | 平台 | 说明 |\n|---|---|---|\n| KimiMonitor-Setup-${VER}.exe | Windows 10/11 x64 | 安装版（推荐） |\n| KimiMonitor-Windows-x64.exe | Windows | 便携单文件版 |\n| KimiMonitor-Windows-Portable.zip | Windows | 绿色文件夹版（含 node.exe） |\n${WANT_MAC ? '| Kimi-Monitor-macOS.tar.gz | macOS 11+ 双架构 | 解压拖入应用程序 |\n' : ''}\n完整说明见 [README](https://github.com/YFan945/kimi-usage-monitor#readme)。`;
+    const notes = `KimiMonitor v${VER} 自动发布。\n\n| 文件 | 平台 | 说明 |\n|---|---|---|\n| KimiMonitor-Setup-${VER}.exe | Windows 10/11 x64 | 安装版（推荐） |\n| KimiMonitor-Windows-x64.exe | Windows | 便携单文件版 |\n| KimiMonitor-Windows-Portable.zip | Windows | 绿色文件夹版（含 node.exe） |\n${WANT_MAC ? '| Kimi-Monitor-macOS.tar.gz | macOS 11+ 双架构 | 解压拖入应用程序 |\n' : ''}\n完整说明见 [README](https://github.com/YFan945/kimi-usage-monitor#readme)。`;
     const notesFile = path.join(DIST, 'notes.md');
     fs.writeFileSync(notesFile, notes);
     const exists = spawnSync('gh', ['release', 'view', tag, '--repo', REPO], { stdio: 'ignore', shell: true }).status === 0;

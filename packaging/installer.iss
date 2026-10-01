@@ -1,7 +1,7 @@
-; Kimi-CodeMonitor — Windows 安装包脚本（Inno Setup）
+; KimiMonitor — Windows 安装包脚本（Inno Setup）
 ; 构建：ISCC.exe packaging\installer.iss
-#define MyAppName "Kimi-CodeMonitor"
-#define MyAppVersion "1.0.2"
+#define MyAppName "KimiMonitor"
+#define MyAppVersion "1.0.3"
 #define MyAppPublisher "YFan945"
 #define MyAppURL "https://github.com/YFan945/kimi-usage-monitor"
 #define SourceDir ".."
