@@ -1,0 +1,10 @@
+{
+  "main": "server.js",
+  "output": "sea-prep.blob",
+  "disableExperimentalSEAWarning": true,
+  "assets": {
+    "index.html": "public/index.html",
+    "icon.png": "public/icon.png",
+    "favicon.ico": "public/favicon.ico"
+  }
+}

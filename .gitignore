@@ -1,0 +1,9 @@
+# 本机运行时产物
+runtime/
+dist/
+config.json
+port.txt
+sea-prep.blob
+node_modules/
+*.log
+.DS_Store
