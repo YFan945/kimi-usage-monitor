@@ -652,12 +652,15 @@ function drawCharts(recs, sumN) {
 
   const max = Math.max(1, ...arr.map(([, b]) => b.o + b.i + b.c + (incCr ? b.r : 0)));
   $('#yMax').textContent = '峰值 ' + fmt(max) + ' tokens';
-  // y 轴网格线保持四等分（见 .bars 背景），标签就近取整为好看的整数（如 100万、300万）
-  $('#yAxis').innerHTML = [1, .75, .5, .25, 0]
-    .map(p => `<span style="bottom:${p * 240}px">${p === 0 ? '0' : fmtTick(max * p)}</span>`).join('');
+  // 纵轴：轴顶取 ≥峰值 的漂亮数（保证四等分后每格都是整数 token），标签/网格线/柱高全部对齐
+  const raw = max / 4, mag = Math.pow(10, Math.floor(Math.log10(raw)));
+  const step = [1, 1.5, 2, 2.5, 3, 4, 5, 10].map(m => m * mag).find(s => s >= raw) || raw;
+  const axisMax = step * 4;
+  const h = v => (v / axisMax * 100);
+  $('#yAxis').innerHTML = [0, 1, 2, 3, 4].map(i =>
+    `<span style="bottom:${i * 60}px">${i === 0 ? '0' : fmtTick(i * step)}</span>`).join('');
   $('#bars').innerHTML = arr.map(([k, b]) => {
     const total = b.o + b.i + b.c + (incCr ? b.r : 0);
-    const h = v => (v / max * 100);
     let inner;
     if (barMode === 'model') {
       const bm = byModelMap.get(k);
