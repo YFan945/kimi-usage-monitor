@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kimi Code 用量监控</title>
+<link rel="icon" type="image/png" href="/icon.png">
+<link rel="shortcut icon" href="/favicon.ico">
+<style>
+:root, html[data-theme="dark"]{
+  --bg:#0d1117; --panel:#161b22; --panel2:#1c2330; --border:#2a3140;
+  --text:#e6edf3; --muted:#8b949e; --accent:#58a6ff; --accent-soft:rgba(88,166,255,.16);
+  --hover:rgba(255,255,255,.04); --tip-bg:rgba(13,17,23,.96); --empty:#30363d; --bar-hover:rgba(255,255,255,.28);
+  --c-out:#3fb950; --c-in:#58a6ff; --c-cc:#f0883e; --c-cr:#a371f7;
+  --hm1:#123156; --hm2:#1f6feb; --hm3:#5aa2ff; --hm4:#b3d4ff;
+  color-scheme:dark;
+}
+html[data-theme="light"]{
+  --bg:#f6f8fa; --panel:#ffffff; --panel2:#eaeef2; --border:#d5dbe1;
+  --text:#1f2328; --muted:#59636e; --accent:#0969da; --accent-soft:rgba(9,105,218,.12);
+  --hover:rgba(0,0,0,.045); --tip-bg:rgba(255,255,255,.97); --empty:#d8dee4; --bar-hover:rgba(0,0,0,.35);
+  --c-out:#1a7f37; --c-in:#0969da; --c-cc:#bc4c00; --c-cr:#8250df;
+  --hm1:#dbe7fb; --hm2:#a8c8fa; --hm3:#5f9df6; --hm4:#1f6feb;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font:14px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif;padding:0 0 40px;transition:background .15s,color .15s}
+a{color:var(--accent);text-decoration:none}
+.wrap{max-width:1200px;margin:0 auto;padding:0 20px}
+header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:18px 0 14px;border-bottom:1px solid var(--border);margin-bottom:16px}
+h1{font-size:20px;font-weight:600;display:flex;align-items:center;gap:10px}
+h1 .dot{width:9px;height:9px;border-radius:50%;background:var(--c-out);box-shadow:0 0 8px var(--c-out)}
+.h-meta{color:var(--muted);font-size:12px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.h-meta label{display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none}
+button{background:var(--panel2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:5px 12px;font-size:13px;cursor:pointer}
+button:hover{border-color:var(--accent);color:var(--accent)}
+button.primary{background:#1f6feb;border-color:#1f6feb;color:#fff}
+button.primary:hover{background:#388bfd;color:#fff}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:16px}
+.card h2{font-size:14px;font-weight:600;color:var(--muted);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{background:var(--panel2);border:1px solid var(--border);border-radius:20px;padding:4px 14px;font-size:13px;cursor:pointer;color:var(--muted);user-select:none}
+.chip:hover{color:var(--text)}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+.range-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.range-row .sep{color:var(--muted)}
+input[type=datetime-local]{background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:13px}
+input[type=datetime-local]:invalid{border-color:var(--border)}
+select{background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:4px 8px;font-size:13px}
+.range-info{color:var(--muted);font-size:12px;margin-top:10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.stat .k{color:var(--muted);font-size:12px}
+.stat .v{font-size:24px;font-weight:700;margin-top:4px;letter-spacing:.5px}
+.stat .s{color:var(--muted);font-size:11px;margin-top:2px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:860px){.grid2{grid-template-columns:1fr}}
+.chart-wrap{overflow-x:auto;position:relative}
+.chart-inner{width:max-content;min-width:100%}
+.bars{display:flex;align-items:flex-end;gap:3px;height:240px;padding-top:8px}
+.bar{flex:1 1 0;min-width:0;height:100%;display:flex;flex-direction:column-reverse;cursor:pointer;position:relative}
+.chart-inner.dense .bar{min-width:5px}
+.bar>div{width:100%}
+.bar:hover{outline:1px solid var(--bar-hover)}
+.seg-out{background:var(--c-out)}.seg-in{background:var(--c-in)}.seg-cc{background:var(--c-cc)}.seg-cr{background:var(--c-cr)}
+.xlabels{position:relative;height:16px;margin-top:6px}
+.xlabels span{position:absolute;top:0;line-height:16px;color:var(--muted);font-size:10px;white-space:nowrap}
+.y-max{color:var(--muted);font-size:11px;text-align:right;margin-bottom:-4px}
+.legend{display:flex;gap:16px;flex-wrap:wrap;color:var(--muted);font-size:12px}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:10px;height:10px;border-radius:3px;display:inline-block}
+.empty-note{position:absolute;inset:24px 0 0 0;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;pointer-events:none;background:transparent}
+#tooltip{position:fixed;pointer-events:none;background:var(--tip-bg);border:1px solid var(--border);border-radius:8px;padding:10px 12px;font-size:12px;z-index:9;display:none;box-shadow:0 6px 20px rgba(0,0,0,.45);max-width:340px;color:var(--text)}
+#tooltip .tt-title{font-weight:600;margin-bottom:6px}
+#tooltip .tt-row{display:flex;justify-content:space-between;gap:16px}
+#tooltip .tt-row b{font-weight:600}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--border);white-space:nowrap}
+th{color:var(--muted);font-weight:500;font-size:12px;position:sticky;top:0;background:var(--panel)}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tbody tr:hover{background:var(--hover)}
+.t-title{max-width:380px;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.t-cwd{max-width:180px;overflow:hidden;text-overflow:ellipsis}
+.hbar-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;font-size:13px;padding:3px 6px;border-radius:6px}
+.hbar-row.click{cursor:pointer}
+.hbar-row.click:hover{background:var(--hover)}
+.hbar-row.sel{background:var(--accent-soft)}
+.hbar-row.sel .name{color:var(--accent);font-weight:600}
+.hbar-row.sel .track{box-shadow:inset 0 0 0 1px var(--accent)}
+.hbar-row .name{width:150px;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar-row .track{flex:1;background:var(--panel2);border-radius:4px;height:18px;overflow:hidden}
+.hbar-row .fill{height:100%;border-radius:4px}
+.hbar-row .val{width:120px;color:var(--muted);font-size:12px;text-align:right;font-variant-numeric:tabular-nums}
+.filter-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.f-label{color:var(--muted);font-size:12px}
+.mselect{position:relative}
+.ms-btn{min-width:170px;text-align:left;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ms-btn::after{content:"▾";color:var(--muted);font-size:11px}
+.ms-panel{position:absolute;top:calc(100% + 4px);left:0;z-index:30;background:var(--panel);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.3);min-width:250px;max-height:340px;overflow:auto;padding:6px}
+.ms-item{display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;cursor:pointer;font-size:13px;user-select:none}
+.ms-item:hover{background:var(--hover)}
+.ms-item input{accent-color:var(--accent)}
+.ms-item .ms-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-item .ms-n{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.hm-wrap{display:flex;gap:8px}
+.hm-weeks{display:grid;grid-template-rows:repeat(7,var(--hm-cell,14px));gap:3px;color:var(--muted);font-size:9px;flex:none}
+.hm-weeks span{display:flex;align-items:center}
+.hm-grid{display:flex;gap:3px}
+.hm-col{display:flex;flex-direction:column;gap:3px;min-width:0}
+.hm-cell{width:var(--hm-cell,14px);height:var(--hm-cell,14px);border-radius:3px}
+.hm-l0{background:var(--empty)}
+.hm-l1{background:var(--hm1)}
+.hm-l2{background:var(--hm2)}
+.hm-l3{background:var(--hm3)}
+.hm-l4{background:var(--hm4)}
+#hmMonths{display:flex;gap:3px;margin-top:6px}
+#hmMonths span{width:var(--hm-cell,14px);flex:none;font-size:10px;color:var(--muted);white-space:nowrap;overflow:visible}
+#hmTip{position:fixed;pointer-events:none;background:var(--tip-bg);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:12px;z-index:31;display:none;box-shadow:0 6px 20px rgba(0,0,0,.35);color:var(--text);line-height:1.7;max-width:280px}
+#hmTip .t2{color:var(--muted)}
+#onboard{position:fixed;inset:0;background:rgba(0,0,0,.55);backdrop-filter:blur(4px);display:none;align-items:center;justify-content:center;z-index:50}
+.ob-card{width:min(480px,92vw);background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:26px 28px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.ob-card h2{text-align:center;color:var(--text);margin:0 0 2px}
+.ob-logo{width:72px;height:72px;border-radius:16px;margin:0 auto 10px;display:block}
+.ob-sub{color:var(--muted);font-size:13px;text-align:center;margin:4px 0 18px}
+.ob-opt{border:1px solid var(--border);border-radius:10px;padding:12px 14px;margin-bottom:10px;cursor:pointer}
+.ob-opt.sel{border-color:var(--accent);background:var(--accent-soft)}
+.ob-opt-head{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px}
+.ob-opt-head input{accent-color:var(--accent)}
+.ob-path{font-size:12px;margin-top:6px;word-break:break-all}
+.ob-stat{font-size:12px;color:var(--muted);margin-top:2px}
+.ob-input{width:100%;margin-top:8px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:6px 10px;font-size:13px}
+.ob-err{color:#f85149;font-size:12px;min-height:18px;margin-bottom:6px;text-align:center}
+#obStart{width:100%;padding:9px}
+.empty{color:var(--muted);text-align:center;padding:30px 0}
+footer{color:var(--muted);font-size:12px;margin-top:24px;line-height:1.8}
+footer code{color:var(--text)}
+.badge{background:var(--accent-soft);color:var(--accent);border-radius:10px;padding:1px 8px;font-size:11px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><span class="dot"></span>Kimi Code 用量监控</h1>
+    <div class="h-meta">
+      <span id="updated">…</span>
+      <label><input type="checkbox" id="auto" checked> 自动刷新(10s)</label>
+      <button id="dirBtn">数据目录</button>
+      <button id="themeBtn">主题：自动</button>
+      <button id="refreshBtn">刷新</button>
+      <button id="quitBtn" title="停止本地服务">退出</button>
+    </div>
+  </header>
+
+  <div class="card" id="dirPanel" style="display:none">
+    <h2>扫描目录<span style="font-weight:400">可添加多个；路径结构需为 …\sessions\&lt;工作区&gt;\&lt;会话&gt;\agents（也兼容直接指向某个会话集合目录）</span></h2>
+    <div id="dirList"></div>
+    <div class="range-row" style="margin-top:4px">
+      <input id="dirInput" style="flex:1;min-width:280px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-size:13px" placeholder="输入或粘贴目录路径，例如 C:\Users\你\.kimi-code\sessions">
+      <button class="primary" id="dirAdd">添加</button>
+    </div>
+    <div class="range-info">修改后立即重新扫描；配置保存在程序目录的 config.json——把整个程序文件夹拷到其他 Windows 电脑即可使用（无 Node 时把 node.exe 放入 runtime\ 子文件夹）。</div>
+  </div>
+
+  <div class="card">
+    <h2>Token 活动总览<span class="chips" id="hmModes">
+      <span class="chip on" data-m="day">每日</span><span class="chip" data-m="week">每周</span><span class="chip" data-m="cum">累计</span>
+    </span></h2>
+    <div class="hm-wrap">
+      <div class="hm-weeks"><span style="grid-row:1">一</span><span style="grid-row:3">三</span><span style="grid-row:5">五</span></div>
+      <div style="flex:1;min-width:0">
+        <div class="hm-grid" id="heatmap"></div>
+        <div id="hmMonths"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>时段选择
+      <span class="chips" id="presets">
+        <span class="chip" data-p="today">今天</span>
+        <span class="chip" data-p="24h">最近24小时</span>
+        <span class="chip" data-p="7d">最近7天</span>
+        <span class="chip" data-p="30d">最近30天</span>
+        <span class="chip on" data-p="all">全部</span>
+      </span>
+    </h2>
+    <div class="range-row">
+      <input type="datetime-local" id="from"> <span class="sep">至</span> <input type="datetime-local" id="to">
+      <button class="primary" id="applyCustom">应用</button>
+      <span class="sep">粒度</span>
+      <select id="gran">
+        <option value="auto">自动</option>
+        <option value="hour">按小时</option>
+        <option value="day">按天</option>
+      </select>
+      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--muted)"><input type="checkbox" id="includeCr" checked> 包含缓存读取</label>
+    </div>
+    <div class="range-info" id="rangeInfo"></div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="card">
+    <h2>Token 消耗趋势<span class="legend" id="legend"></span></h2>
+    <div class="filter-row">
+      <span class="f-label">着色</span>
+      <span class="chips" id="barModes">
+        <span class="chip on" data-b="type">按类型</span><span class="chip" data-b="model">按模型</span>
+      </span>
+      <span class="f-label">模型</span>
+      <div class="mselect">
+        <button type="button" class="ms-btn" id="msModelBtn">全部</button>
+        <div class="ms-panel" id="msModelPanel" hidden></div>
+      </div>
+      <span class="f-label">项目</span>
+      <div class="mselect">
+        <button type="button" class="ms-btn" id="msProjBtn">全部</button>
+        <div class="ms-panel" id="msProjPanel" hidden></div>
+      </div>
+      <button id="fltClear" style="display:none">清除筛选</button>
+    </div>
+    <div class="y-max" id="yMax"></div>
+    <div class="chart-wrap" id="trendWrap">
+      <div class="empty-note" id="emptyNote" style="display:none">该时段内没有 API 调用</div>
+      <div class="chart-inner" id="trendInner">
+        <div class="bars" id="bars"></div>
+        <div class="xlabels" id="xlabels"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card"><h2>按模型</h2><div id="byModel"></div></div>
+    <div class="card"><h2>按项目</h2><div id="byProject"></div></div>
+  </div>
+
+  <div class="card">
+    <h2>会话明细<span id="sessCount"></span></h2>
+    <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
+      <table>
+        <thead><tr><th>项目</th><th>会话标题</th><th class="num">调用</th><th class="num">输入</th><th class="num">输出</th><th class="num">缓存读</th><th class="num">合计</th><th>最后活动</th></tr></thead>
+        <tbody id="sessBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <footer id="footer"></footer>
+</div>
+<div id="tooltip"></div>
+<div id="hmTip"><div class="t1"></div><div class="t2"></div></div>
+<div id="onboard">
+  <div class="ob-card">
+    <img src="/icon.png" class="ob-logo" alt="">
+    <h2>Kimi Code 用量监控</h2>
+    <p class="ob-sub">首次使用：选择要扫描的 Kimi Code 数据目录</p>
+    <div class="ob-opt" id="obDefault">
+      <div class="ob-opt-head"><input type="radio" name="ob" id="obUseDefault" checked><span>使用检测到的默认位置</span></div>
+      <div class="ob-path" id="obDefaultPath"></div>
+      <div class="ob-stat" id="obDefaultStat"></div>
+    </div>
+    <div class="ob-opt" id="obCustom">
+      <div class="ob-opt-head"><input type="radio" name="ob" id="obUseCustom"><span>指定其他目录</span></div>
+      <input id="obInput" class="ob-input" placeholder="例如 C:\Users\你\.kimi-code\sessions">
+    </div>
+    <div id="obErr" class="ob-err"></div>
+    <button class="primary" id="obStart">开始使用</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+const $ = s => document.querySelector(s);
+const DATA = { sessions: [], records: [], generatedAt: 0, sessionsRoot: '' };
+let range = { start: null, end: null };   // null/null = 全部
+let curPreset = 'all';
+let fltModel = new Set(), fltProj = new Set();  // 模型/项目多选筛选（空集 = 不筛）
+let barMode = 'type';                     // 趋势图着色：type=按类型 model=按模型
+let modelOrder = [];                      // 全量按用量降序的模型列表（保证配色稳定）
+const PALETTE = ['#58a6ff', '#3fb950', '#f0883e', '#a371f7', '#39c5cf', '#f778ba', '#d29922', '#8b949e'];
+const modelColor = m => PALETTE[Math.max(0, modelOrder.indexOf(m)) % PALETTE.length];
+
+// ---------- 格式化 ----------
+const p2 = n => String(n).padStart(2, '0');
+function fmt(n) {
+  n = n | 0;
+  const abs = Math.abs(n);
+  if (abs >= 1e8) return (n / 1e8).toFixed(2) + '亿';
+  if (abs >= 1e4) return (n / 1e4).toFixed(1) + '万';
+  return n.toLocaleString('en-US');
+}
+function fmtFull(n) { return (n | 0).toLocaleString('en-US'); }
+function fmtTime(t) { const d = new Date(t); return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`; }
+function rel(t) {
+  if (!t) return '—';
+  const s = (Date.now() - t) / 1000;
+  if (s < 60) return '刚刚';
+  if (s < 3600) return Math.floor(s / 60) + ' 分钟前';
+  if (s < 86400) return Math.floor(s / 3600) + ' 小时前';
+  return Math.floor(s / 86400) + ' 天前';
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function shortPath(p) { if (!p) return '(未知)'; const n = p.replace(/[\\/]+$/, '').split(/[\\/]/); return n[n.length - 1] || p; }
+function shortModel(m) { const i = m.lastIndexOf('/'); return i > -1 ? m.slice(i + 1) : m; }
+function toLocalInput(d) { return `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}T${p2(d.getHours())}:${p2(d.getMinutes())}`; }
+
+// ---------- 主题 ----------
+function getThemeMode() { return localStorage.getItem('kimi-theme') || 'auto'; }
+function resolvedTheme() {
+  const m = getThemeMode();
+  if (m !== 'auto') return m;
+  return matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+}
+function applyTheme() {
+  document.documentElement.dataset.theme = resolvedTheme();
+  $('#themeBtn').textContent = '主题：' + ({ auto: '自动', light: '浅色', dark: '深色' })[getThemeMode()];
+}
+$('#themeBtn').addEventListener('click', () => {
+  const next = { auto: 'light', light: 'dark', dark: 'auto' }[getThemeMode()];
+  localStorage.setItem('kimi-theme', next);
+  applyTheme();
+});
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', () => { if (getThemeMode() === 'auto') applyTheme(); });
+
+// ---------- UI 状态持久化 ----------
+function saveUI() {
+  localStorage.setItem('kimi-ui', JSON.stringify({
+    preset: curPreset, from: $('#from').value, to: $('#to').value,
+    gran: $('#gran').value, incCr: $('#includeCr').checked,
+    model: [...fltModel], proj: [...fltProj], hm: hmMode, bar: barMode,
+  }));
+}
+
+// ---------- 模型/项目多选筛选 ----------
+function panelIdOf(which) { return which === 'model' ? '#msModelPanel' : '#msProjPanel'; }
+function refreshFilterOptions() {
+  const models = new Map(), projs = new Map();
+  for (const r of DATA.records) {
+    models.set(r.m, (models.get(r.m) || 0) + 1);
+    const cwd = (DATA.sessions[r.s] && DATA.sessions[r.s].cwd) || '(未知)';
+    projs.set(cwd, (projs.get(cwd) || 0) + 1);
+  }
+  // 选项已不存在的，从选中集合中原地剔除（保持 Set 对象身份稳定，监听器始终读写同一实例）
+  for (const k of [...fltModel]) if (!models.has(k)) fltModel.delete(k);
+  for (const k of [...fltProj]) if (!projs.has(k)) fltProj.delete(k);
+  const build = (panelSel, map, set, shortFn) => {
+    const items = [...map.entries()].sort((a, b) => b[1] - a[1]);
+    $(panelSel).innerHTML = items.length ? items.map(([k, n]) =>
+      `<label class="ms-item"><input type="checkbox" data-k="${esc(k)}"${set.has(k) ? ' checked' : ''}><span class="ms-name" title="${esc(k)}">${esc(shortFn(k))}</span><span class="ms-n">${fmtFull(n)} 次</span></label>`
+    ).join('') : '<div class="empty" style="padding:12px">暂无数据</div>';
+  };
+  build('#msModelPanel', models, fltModel, shortModel);
+  build('#msProjPanel', projs, fltProj, shortPath);
+  modelOrder = [...models.keys()];
+  syncFilterControls();
+}
+function renderLegend() {
+  const lg = $('#legend');
+  if (barMode === 'model') {
+    lg.innerHTML = modelOrder.map(m => `<span><i style="background:${modelColor(m)}"></i>${esc(shortModel(m))}</span>`).join('');
+  } else {
+    lg.innerHTML = `<span><i class="seg-out"></i>输出</span><span><i class="seg-in"></i>输入(未缓存)</span><span><i class="seg-cc"></i>缓存创建</span><span style="opacity:${$('#includeCr').checked ? 1 : .35}"><i class="seg-cr"></i>缓存读取</span>`;
+  }
+}
+function syncFilterControls() {
+  const msLabel = set => set.size === 0 ? '全部' : set.size === 1 ? shortModel([...set][0]) : `已选 ${set.size} 项`;
+  const pjLabel = set => set.size === 0 ? '全部' : set.size === 1 ? shortPath([...set][0]) : `已选 ${set.size} 项`;
+  $('#msModelBtn').textContent = msLabel(fltModel);
+  $('#msProjBtn').textContent = pjLabel(fltProj);
+  $('#fltClear').style.display = (fltModel.size || fltProj.size) ? '' : 'none';
+}
+function togglePanel(which) {
+  const panels = ['#msModelPanel', '#msProjPanel'];
+  const target = panelIdOf(which);
+  for (const p of panels) $(p).hidden = $(p).id !== target.slice(1) ? true : !$(p).hidden;
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('.mselect')) { $('#msModelPanel').hidden = true; $('#msProjPanel').hidden = true; }
+});
+function onPanelChange(panelSel, which) {
+  $(panelSel).addEventListener('change', e => {
+    const k = e.target.dataset.k;
+    if (!k) return;
+    const set = which === 'model' ? fltModel : fltProj; // 动态取当前 Set
+    if (e.target.checked) set.add(k); else set.delete(k);
+    syncFilterControls(); saveUI(); render();
+  });
+}
+
+// ---------- 热力总览：模式切换与悬停提示 ----------
+function initHeatmapUi() {
+  $('#hmModes').addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c) return;
+    hmMode = c.dataset.m;
+    document.querySelectorAll('#hmModes .chip').forEach(x => x.classList.toggle('on', x === c));
+    saveUI(); drawHeatmap();
+  });
+  const tip = $('#hmTip');
+  $('#heatmap').addEventListener('mousemove', e => {
+    const cell = e.target.closest('.hm-cell[data-t1]');
+    if (!cell) { tip.style.display = 'none'; return; }
+    tip.querySelector('.t1').textContent = cell.dataset.t1;
+    tip.querySelector('.t2').textContent = cell.dataset.t2;
+    tip.style.display = 'block';
+    tip.style.left = Math.min(e.clientX + 14, innerWidth - 300) + 'px';
+    tip.style.top = Math.max(8, e.clientY - 64) + 'px';
+  });
+  $('#heatmap').addEventListener('mouseleave', () => { tip.style.display = 'none'; });
+  let rsT;
+  window.addEventListener('resize', () => { clearTimeout(rsT); rsT = setTimeout(drawHeatmap, 150); });
+}
+
+// ---------- 时段 ----------
+function applyPreset(p) {
+  curPreset = p;
+  const now = new Date(); const sod = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  if (p === 'today') range = { start: sod.getTime(), end: null };
+  else if (p === '24h') range = { start: now.getTime() - 864e5, end: null };
+  else if (p === '7d') range = { start: sod.getTime() - 6 * 864e5, end: null };
+  else if (p === '30d') range = { start: sod.getTime() - 29 * 864e5, end: null };
+  else range = { start: null, end: null };
+  document.querySelectorAll('#presets .chip').forEach(c => c.classList.toggle('on', c.dataset.p === p));
+  // 预设与自定义输入框保持同步，避免"看到的和应用的"不一致
+  $('#from').value = range.start != null ? toLocalInput(new Date(range.start)) : '';
+  $('#to').value = toLocalInput(now);
+  saveUI();
+  render();
+}
+$('#presets').addEventListener('click', e => { const c = e.target.closest('.chip'); if (c) applyPreset(c.dataset.p); });
+$('#applyCustom').addEventListener('click', () => {
+  const f = $('#from').value, t = $('#to').value;
+  if (!f && !t) { applyPreset('all'); return; }
+  range = { start: f ? new Date(f).getTime() : null, end: t ? new Date(t).getTime() + 59999 : null };
+  curPreset = 'custom';
+  document.querySelectorAll('#presets .chip').forEach(c => c.classList.remove('on'));
+  saveUI();
+  render();
+});
+$('#gran').addEventListener('change', () => { saveUI(); render(); });
+$('#includeCr').addEventListener('change', () => {
+  saveUI(); render();
+});
+
+// ---------- 数据加载 ----------
+async function loadData() {
+  try {
+    const r = await fetch('/api/data');
+    const j = await r.json();
+    Object.assign(DATA, j);
+    refreshFilterOptions();
+    maybeOnboard();
+    $('#updated').textContent = '数据更新于 ' + new Date(j.generatedAt).toLocaleTimeString('zh-CN', { hour12: false });
+    render();
+  } catch (e) { $('#updated').textContent = '加载失败: ' + e.message; }
+}
+$('#refreshBtn').addEventListener('click', loadData);
+setInterval(() => { if ($('#auto').checked) loadData(); }, 10000);
+
+// ---------- 渲染 ----------
+function render() {
+  const { start, end } = range;
+  const recsRange = DATA.records.filter(r => (!start || r.t >= start) && (!end || r.t < end));
+  const hasFilter = !!(fltModel.size || fltProj.size);
+  const recs = hasFilter ? recsRange.filter(r =>
+    (!fltModel.size || fltModel.has(r.m)) &&
+    (!fltProj.size || fltProj.has((DATA.sessions[r.s] && DATA.sessions[r.s].cwd) || '(未知)'))
+  ) : recsRange;
+  const sum = { n: recs.length, i: 0, o: 0, r: 0, c: 0 };
+  for (const r of recs) { sum.i += r.i; sum.o += r.o; sum.r += r.r; sum.c += r.c; }
+  sum.total = sum.i + sum.o + sum.r + sum.c;
+
+  $('#stats').innerHTML = [
+    { k: 'API 调用次数', v: fmtFull(sum.n), s: '次模型请求' },
+    { k: '总 Tokens', v: fmt(sum.total), s: '全口径合计', full: sum.total },
+    { k: '输入（未缓存）', v: fmt(sum.i), s: pct(sum.i, sum.total), full: sum.i },
+    { k: '输出', v: fmt(sum.o), s: pct(sum.o, sum.total), full: sum.o },
+    { k: '缓存读取', v: fmt(sum.r), s: pct(sum.r, sum.total), full: sum.r },
+    { k: '缓存创建', v: fmt(sum.c), s: pct(sum.c, sum.total), full: sum.c },
+  ].map(x => `<div class="stat" ${x.full != null ? `title="${fmtFull(x.full)} tokens"` : ''}><div class="k">${x.k}</div><div class="v">${x.v}</div><div class="s">${x.s}</div></div>`).join('');
+
+  const sTxt = range.start ? fmtTime(range.start) : '最早记录';
+  const eTxt = range.end ? fmtTime(range.end) : '现在';
+  const fparts = [];
+  if (fltModel.size) fparts.push('模型 ' + (fltModel.size === 1 ? shortModel([...fltModel][0]) : `${fltModel.size} 项`));
+  if (fltProj.size) fparts.push('项目 ' + (fltProj.size === 1 ? shortPath([...fltProj][0]) : `${fltProj.size} 项`));
+  $('#rangeInfo').textContent = `当前时段：${sTxt} ~ ${eTxt}，共 ${fmtFull(sum.n)} 次 API 调用` +
+    (fparts.length ? `（筛选：${fparts.join(' + ')}）` : '');
+
+  const emptyText = hasFilter ? '该时段与筛选条件下没有 API 调用' : '该时段内没有 API 调用';
+  $('#emptyNote').textContent = emptyText;
+
+  renderLegend();
+  drawHeatmap();
+  drawCharts(recs, sum.n);
+  drawBreakdowns(recsRange);
+  drawSessions(recs);
+  $('#footer').innerHTML = `数据来自 ${((DATA.roots && DATA.roots.length) ? DATA.roots : ['~/.kimi-code/sessions']).map(r => '<code>' + esc(r) + '</code>').join(' 、 ')}（每次 LLM 请求一条 usage.record，含子 agent）。仅为 token 计数，不代表费用。`;
+}
+
+// ---------- 数据目录管理 ----------
+function renderDirList(stats) {
+  const list = $('#dirList');
+  const rows = (stats || []).map(s => `<div class="hbar-row" style="margin-bottom:6px">
+    <div class="name" style="width:auto;max-width:420px;flex:none;text-align:left" title="${esc(s.path)}">${esc(s.path)}</div>
+    <div class="track" style="max-width:220px"><div class="fill" style="width:${Math.min(100, s.sessions * 8)}%;background:${s.ok ? 'var(--c-out)' : 'var(--c-cc)'}"></div></div>
+    <div class="val" style="width:auto">${s.ok ? `${s.sessions} 会话 · ${s.records} 条记录` : '路径不存在'}</div>
+    <button class="dir-del" data-p="${esc(s.path)}" title="移除此目录" style="padding:0 8px">×</button>
+  </div>`).join('');
+  list.innerHTML = rows || '<div class="range-info">尚未添加任何目录。</div>';
+}
+async function applyRoots(roots) {
+  const r = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roots }) });
+  const j = await r.json();
+  DATA.roots = j.roots;
+  renderDirList(j.stats);
+  await loadData();
+}
+function initDirUi() {
+  $('#dirBtn').addEventListener('click', () => {
+    const p = $('#dirPanel');
+    const opening = p.style.display === 'none';
+    p.style.display = opening ? '' : 'none';
+    if (opening) applyRoots([...(DATA.roots || [])]); // 打开时实时获取各目录统计
+  });
+  $('#dirAdd').addEventListener('click', async () => {
+    const v = $('#dirInput').value.trim();
+    if (!v) return;
+    const roots = [...new Set([...(DATA.roots || []), v])];
+    $('#dirInput').value = '';
+    await applyRoots(roots);
+  });
+  $('#dirInput').addEventListener('keydown', e => { if (e.key === 'Enter') $('#dirAdd').click(); });
+  $('#dirList').addEventListener('click', async e => {
+    const b = e.target.closest('.dir-del'); if (!b) return;
+    await applyRoots((DATA.roots || []).filter(r => r !== b.dataset.p));
+  });
+  $('#quitBtn').addEventListener('click', () => {
+    if (!confirm('退出会停止本机监控服务，确定？')) return;
+    fetch('/api/quit', { method: 'POST' }).finally(() => {
+      document.body.innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;color:#8b949e;font-size:15px">本地服务已退出，可以关闭此窗口。下次双击"启动监控.bat"重新开始。</div>';
+    });
+  });
+}
+
+function pct(a, b) { return b ? (a / b * 100).toFixed(1) + '%' : '—'; }
+
+// ---------- 趋势图 ----------
+function pickGran() {
+  const g = $('#gran').value;
+  const now = Date.now();
+  let minT = Infinity;
+  for (const r of DATA.records) if (r.t > 0 && r.t < minT) minT = r.t;
+  const span = (range.end ?? now) - (range.start ?? (minT !== Infinity ? minT : now));
+  if (g === 'auto') return span <= 48 * 36e5 ? 'hour' : 'day';
+  if (g === 'hour' && span > 90 * 864e5) return 'day'; // 手动按小时但跨度过大，退回按天
+  return g;
+}
+
+function drawCharts(recs, sumN) {
+  const gran = pickGran();
+  const incCr = $('#includeCr').checked;
+  const keyOf = d => gran === 'hour'
+    ? `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}时`
+    : `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+  const map = new Map();
+  const byModelMap = new Map(); // key -> { by: Map(模型->tokens), n }（按模型着色用）
+  let minT = Infinity, maxT = 0;
+  for (const r of recs) {
+    if (r.t <= 0) continue;
+    const key = keyOf(new Date(r.t));
+    let b = map.get(key); if (!b) b = map.set(key, b = { i: 0, o: 0, r: 0, c: 0, n: 0 }).get(key);
+    b.i += r.i; b.o += r.o; b.r += r.r; b.c += r.c; b.n++;
+    let bm = byModelMap.get(key); if (!bm) bm = byModelMap.set(key, bm = { by: new Map(), n: 0 }).get(key);
+    bm.by.set(r.m, (bm.by.get(r.m) || 0) + r.i + r.o + r.c + (incCr ? r.r : 0));
+    bm.n++;
+    if (r.t < minT) minT = r.t; if (r.t > maxT) maxT = r.t;
+  }
+  // 坐标轴始终覆盖完整所选时段：起点=所选开始(或最早记录)，终点=所选结束(或现在)
+  const now = Date.now();
+  const axisStart = range.start ?? (minT !== Infinity ? minT : now);
+  const axisEnd = range.end ?? Math.max(now, maxT);
+  let cur = gran === 'hour'
+    ? new Date(new Date(axisStart).setMinutes(0, 0, 0))
+    : new Date(new Date(axisStart).setHours(0, 0, 0, 0));
+  const endKey = keyOf(new Date(axisEnd));
+  for (let g = 0; g < 2400; g++) {
+    const key = keyOf(cur);
+    if (!map.has(key)) map.set(key, { i: 0, o: 0, r: 0, c: 0, n: 0 });
+    if (key === endKey) break;
+    if (gran === 'hour') cur.setHours(cur.getHours() + 1);
+    else cur.setDate(cur.getDate() + 1);
+    if (cur.getTime() > axisEnd) { const k2 = keyOf(cur); if (!map.has(k2)) map.set(k2, { i: 0, o: 0, r: 0, c: 0, n: 0 }); break; }
+  }
+  const arr = [...map.entries()].sort((a, b) => a[0] < b[0] ? -1 : 1);
+  // ≤180 个桶自适应铺满容器（48h 按小时 / 30 天按天绝不出现横向滚动）；
+  // 更长的自定义时段才启用最小柱宽 + 横向滚动
+  const dense = arr.length > 180;
+  $('#trendInner').classList.toggle('dense', dense);
+  const w = Math.max(300, $('#trendWrap').clientWidth || 1100);
+  const every = dense ? 10
+    : Math.max(1, Math.ceil(arr.length / Math.max(1, Math.floor(w / 80))));
+  const labelOf = k => gran === 'hour' ? k.slice(5, 10) + ' ' + k.slice(11) : k.slice(5);
+  // 标签绝对定位在轴层上（居中对齐桶位、首尾贴边），不受窄桶裁剪
+  const labelSpans = () => {
+    const n = arr.length; if (!n) return '';
+    const out = [];
+    for (let i = 0, k = 0; i < n; i += every, k++) {
+      let pos;
+      if (k === 0) pos = 'left:0';
+      else if (i > n - 2) pos = 'right:0';
+      else pos = `left:${((i + 0.5) / n * 100).toFixed(2)}%;transform:translateX(-50%)`;
+      out.push(`<span style="${pos}">${esc(labelOf(arr[i][0]))}</span>`);
+    }
+    return out.join('');
+  };
+
+  $('#emptyNote').style.display = sumN === 0 ? 'flex' : 'none';
+
+  if (sumN === 0) {
+    $('#yMax').textContent = '';
+    // 空柱同样携带数据属性，悬停可见"日期 + 各项 0"的提示
+    $('#bars').innerHTML = arr.map(([k, b]) => `<div class="bar" data-k="${k}" data-i="${b.i}" data-o="${b.o}" data-r="${b.r}" data-c="${b.c}" data-n="${b.n}"><div style="height:2px;background:var(--empty)"></div></div>`).join('');
+    $('#xlabels').innerHTML = labelSpans();
+    return;
+  }
+
+  const max = Math.max(1, ...arr.map(([, b]) => b.o + b.i + b.c + (incCr ? b.r : 0)));
+  $('#yMax').textContent = '峰值 ' + fmt(max) + ' tokens';
+  $('#bars').innerHTML = arr.map(([k, b]) => {
+    const total = b.o + b.i + b.c + (incCr ? b.r : 0);
+    const h = v => (v / max * 100);
+    let inner;
+    if (barMode === 'model') {
+      const bm = byModelMap.get(k);
+      inner = bm ? modelOrder.filter(m => bm.by.get(m) > 0)
+        .map(m => `<div style="height:${h(bm.by.get(m))}%;background:${modelColor(m)}"></div>`).join('') : '';
+    } else {
+      const seg = (cls, v) => v > 0 ? `<div class="${cls}" style="height:${h(v)}%"></div>` : '';
+      inner = seg('seg-cr', incCr ? b.r : 0) + seg('seg-cc', b.c) + seg('seg-in', b.i) + seg('seg-out', b.o);
+    }
+    const bm = byModelMap.get(k);
+    const dataM = barMode === 'model' && bm ? ` data-m="${esc(JSON.stringify(Object.fromEntries(bm.by)))}"` : '';
+    return `<div class="bar" data-k="${k}" data-i="${b.i}" data-o="${b.o}" data-r="${b.r}" data-c="${b.c}" data-n="${b.n}"${dataM}>
+      ${inner}
+      ${total === 0 ? '<div style="height:2px;background:var(--empty)"></div>' : ''}
+    </div>`;
+  }).join('');
+  $('#xlabels').innerHTML = labelSpans();
+}
+
+// ---------- 热力总览图（始终全量数据，置于页首） ----------
+let hmMode = 'day'; // day=每日 week=每周 cum=累计
+function cnDate(d) { return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`; }
+function drawHeatmap() {
+  const host = $('#heatmap');
+  const days = new Map();
+  let minT = Infinity;
+  for (const r of DATA.records) {
+    if (r.t <= 0) continue;
+    const d = new Date(r.t);
+    const key = `${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}`;
+    let b = days.get(key); if (!b) b = days.set(key, { i: 0, o: 0, r: 0, c: 0, n: 0 }).get(key);
+    b.i += r.i; b.o += r.o; b.r += r.r; b.c += r.c; b.n++;
+    if (r.t < minT) minT = r.t;
+  }
+  if (!days.size) { host.innerHTML = ''; $('#hmMonths').innerHTML = ''; return; }
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  // 网格几何：正方形格子，追溯足够多的周数铺满容器宽度（最多约 1 年）；
+  // 末列补齐到本周周日，保证整体是完美长方形
+  const gap = 3;
+  const avail = Math.max(320, host.parentElement.clientWidth - 20 - 8); // 扣除星期标签列与间距
+  const todayMon = new Date(today); todayMon.setDate(todayMon.getDate() - (todayMon.getDay() + 6) % 7);
+  const weekEnd = new Date(todayMon); weekEnd.setDate(weekEnd.getDate() + 6); // 本周周日
+  const dataStartMon = new Date(Math.min(minT, today.getTime())); dataStartMon.setDate(dataStartMon.getDate() - (dataStartMon.getDay() + 6) % 7);
+  const dataCols = Math.round((weekEnd - dataStartMon) / (7 * 864e5)) + 1;
+  const n = Math.max(Math.ceil(avail / 27), Math.min(dataCols, 53)); // 目标格 ≤24px，追溯补足
+  let start = new Date(Math.min(dataStartMon.getTime(), weekEnd.getTime() - (n - 1) * 7 * 864e5));
+  let colCount = Math.round((weekEnd - start) / (7 * 864e5)) + 1;
+  if (colCount > 53) { colCount = 53; start = new Date(weekEnd.getTime() - 52 * 7 * 864e5); }
+  const cell = Math.floor((avail - (colCount - 1) * gap) / colCount);
+  host.closest('.hm-wrap').style.setProperty('--hm-cell', Math.max(8, cell) + 'px');
+  const cols = [];
+  const cur = new Date(start);
+  for (let g = 0; g < 60 && cur <= weekEnd; g++) {
+    const col = [];
+    for (let i = 0; i < 7; i++) {
+      col.push({ date: new Date(cur), key: `${cur.getFullYear()}-${p2(cur.getMonth() + 1)}-${p2(cur.getDate())}`, future: cur > today });
+      cur.setDate(cur.getDate() + 1);
+    }
+    cols.push(col);
+  }
+  const weeks = cols.map(col => {
+    let v = 0, n = 0;
+    for (const c of col) { const b = days.get(c.key); if (b) { v += b.i + b.o + b.r + b.c; n += b.n; } }
+    return { v, n, end: col[6].date };
+  });
+  let acc = 0, accN = 0;
+  const cums = weeks.map(w => ({ v: (acc += w.v, acc), n: (accN += w.n, accN) }));
+  const valOf = (ci, cell) => {
+    if (hmMode === 'day') { const b = days.get(cell.key); return { v: b ? b.i + b.o + b.r + b.c : 0, n: b ? b.n : 0, d: cell.date, suffix: '' }; }
+    if (hmMode === 'week') return { v: weeks[ci].v, n: weeks[ci].n, d: weeks[ci].end, suffix: ' 当周' };
+    return { v: cums[ci].v, n: cums[ci].n, d: weeks[ci].end, suffix: ' 当周累计', cum: true };
+  };
+  const srcVals = (hmMode === 'day' ? [...days.values()].map(b => b.i + b.o + b.r + b.c)
+    : hmMode === 'week' ? weeks.map(w => w.v) : cums.map(c => c.v)).filter(v => v > 0).sort((a, b) => a - b);
+  const q = p => srcVals.length ? srcVals[Math.min(srcVals.length - 1, Math.floor(p * srcVals.length))] : 0;
+  const th = [q(.4), q(.65), q(.85)];
+  const level = v => v <= 0 ? 0 : v <= th[0] ? 1 : v <= th[1] ? 2 : v <= th[2] ? 3 : 4;
+  host.innerHTML = cols.map((col, ci) => '<div class="hm-col">' + col.map(cell => {
+    if (cell.future) {
+      // 每周/累计模式下一列一色，未来格跟随列色；每日模式下未来格为空灰
+      const fv = hmMode === 'day' ? 0 : hmMode === 'week' ? weeks[ci].v : cums[ci].v;
+      return `<div class="hm-cell hm-l${level(fv)}" data-t1="${esc(cnDate(cell.date))}" data-t2="尚无数据"></div>`;
+    }
+    const x = valOf(ci, cell);
+    const t1 = (x.cum ? '截至 ' : '') + cnDate(x.d) + x.suffix;
+    const t2 = `${fmt(x.v)} tokens · ${fmtFull(x.n)} 次调用`;
+    return `<div class="hm-cell hm-l${level(x.v)}" data-t1="${esc(t1)}" data-t2="${esc(t2)}"></div>`;
+  }).join('') + '</div>').join('');
+  // 月份标注在"包含该月 1 日"的那一列下
+  $('#hmMonths').innerHTML = cols.map(col => {
+    const first = col.find(c => c.date.getDate() === 1);
+    return `<span>${first ? (first.date.getMonth() + 1) + '月' : ''}</span>`;
+  }).join('');
+}
+
+// tooltip（趋势图共用）
+const tip = $('#tooltip');
+document.addEventListener('mousemove', e => {
+  const bar = e.target.closest && e.target.closest('.bar[data-k]');
+  if (!bar || !bar.dataset.k) { tip.style.display = 'none'; return; }
+  const d = bar.dataset;
+  let rows;
+  if (d.m) { // 按模型着色：逐模型分解
+    const by = JSON.parse(d.m);
+    rows = modelOrder.filter(m => by[m]).map(m =>
+      `<div class="tt-row" style="color:${modelColor(m)}"><span>${esc(shortModel(m))}</span><b>${fmtFull(by[m])}</b></div>`).join('');
+    rows += `<div class="tt-row"><span>小计</span><b>${fmtFull(Object.values(by).reduce((s, v) => s + v, 0))}</b></div>`;
+  } else {
+    rows = `<div class="tt-row"><span>API 调用</span><b>${fmtFull(+d.n)}</b></div>
+    <div class="tt-row" style="color:var(--c-out)"><span>输出</span><b>${fmtFull(+d.o)}</b></div>
+    <div class="tt-row" style="color:var(--c-in)"><span>输入(未缓存)</span><b>${fmtFull(+d.i)}</b></div>
+    <div class="tt-row" style="color:var(--c-cc)"><span>缓存创建</span><b>${fmtFull(+d.c)}</b></div>
+    <div class="tt-row" style="color:var(--c-cr)"><span>缓存读取</span><b>${fmtFull(+d.r)}</b></div>
+    <div class="tt-row"><span>小计</span><b>${fmtFull(+d.i + +d.o + +d.c + +d.r)}</b></div>`;
+  }
+  tip.innerHTML = `<div class="tt-title">${esc(d.k)}</div>` + rows;
+  tip.style.display = 'block';
+  const x = Math.min(e.clientX + 14, innerWidth - 360), y = Math.min(e.clientY + 14, innerHeight - 200);
+  tip.style.left = x + 'px'; tip.style.top = y + 'px';
+});
+
+// ---------- 分解 ----------
+function hbars(el, entries, labeler, keyAttr, selSet) {
+  if (!entries.length) { el.innerHTML = '<div class="empty">该时段无数据</div>'; return; }
+  const max = Math.max(1, ...entries.map(e => e.weight));
+  el.innerHTML = entries.map(e => `<div class="hbar-row click${selSet && selSet.has(e.key) ? ' sel' : ''}" data-${keyAttr}="${esc(e.key)}" title="${esc(e.tip)}（点击加入/移出筛选）">
+    <div class="name" title="${esc(e.name)}">${esc(e.name)}</div>
+    <div class="track"><div class="fill" style="width:${e.weight / max * 100}%;background:${e.color}"></div></div>
+    <div class="val">${labeler(e)}</div>
+  </div>`).join('');
+}
+function drawBreakdowns(recsRange) {
+  const byModel = new Map(), byProj = new Map();
+  for (const r of recsRange) {
+    const m = byModel.get(r.m) || { name: r.m, calls: 0, i: 0, o: 0, r: 0, c: 0 };
+    m.calls++; m.i += r.i; m.o += r.o; m.r += r.r; m.c += r.c; byModel.set(r.m, m);
+    const cwd = (DATA.sessions[r.s] && DATA.sessions[r.s].cwd) || '(未知)';
+    const pr = byProj.get(cwd) || { name: cwd, calls: 0, i: 0, o: 0, r: 0, c: 0 };
+    pr.calls++; pr.i += r.i; pr.o += r.o; pr.r += r.r; pr.c += r.c; byProj.set(cwd, pr);
+  }
+  const mArr = [...byModel.values()].map(m => ({ key: m.name, name: shortModel(m.name), weight: m.i + m.o + m.c, tip: `${m.name}\n调用 ${fmtFull(m.calls)} | 输入 ${fmtFull(m.i)} | 输出 ${fmtFull(m.o)} | 缓存读 ${fmtFull(m.r)}`, color: 'var(--accent)', _m: m }))
+    .sort((a, b) => b.weight - a.weight);
+  hbars($('#byModel'), mArr.slice(0, 8), e => `${fmtFull(e._m.calls)} 次 · ${fmt(e.weight)}`, 'model', fltModel);
+  const pArr = [...byProj.values()].map(p => ({ key: p.name, name: shortPath(p.name), weight: p.i + p.o + p.c, tip: `${p.name}\n调用 ${fmtFull(p.calls)} | 输入 ${fmtFull(p.i)} | 输出 ${fmtFull(p.o)} | 缓存读 ${fmtFull(p.r)}`, color: 'var(--c-out)', _p: p }))
+    .sort((a, b) => b.weight - a.weight);
+  hbars($('#byProject'), pArr.slice(0, 8), e => `${fmtFull(e._p.calls)} 次 · ${fmt(e.weight)}`, 'proj', fltProj);
+}
+
+// ---------- 会话表 ----------
+function drawSessions(recs) {
+  const bySess = new Map();
+  for (const r of recs) {
+    const s = bySess.get(r.s) || { calls: 0, i: 0, o: 0, r: 0, c: 0, last: 0 };
+    s.calls++; s.i += r.i; s.o += r.o; s.r += r.r; s.c += r.c; s.last = Math.max(s.last, r.t);
+    bySess.set(r.s, s);
+  }
+  const rows = [...bySess.entries()].sort((a, b) => b[1].calls - a[1].calls);
+  $('#sessCount').innerHTML = `<span class="badge">${rows.length} 个会话${rows.length > 50 ? '（显示调用最多的前 50 个）' : ''}</span>`;
+  $('#sessBody').innerHTML = rows.slice(0, 50).map(([si, s]) => {
+    const sess = DATA.sessions[si] || {};
+    return `<tr>
+      <td class="t-cwd" title="${esc(sess.cwd || '')}">${esc(shortPath(sess.cwd))}</td>
+      <td class="t-title" title="${esc(sess.title || '')}">${esc((sess.title || '(无标题)').slice(0, 60))}</td>
+      <td class="num">${fmtFull(s.calls)}</td>
+      <td class="num">${fmt(s.i)}</td>
+      <td class="num">${fmt(s.o)}</td>
+      <td class="num">${fmt(s.r)}</td>
+      <td class="num"><b>${fmt(s.i + s.o + s.c + s.r)}</b></td>
+      <td title="${fmtTime(s.last)}">${rel(s.last)}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="8" class="empty">该时段内没有 API 调用</td></tr>';
+}
+
+// ---------- 首次运行引导 ----------
+function syncObSel() {
+  $('#obDefault').classList.toggle('sel', $('#obUseDefault').checked);
+  $('#obCustom').classList.toggle('sel', $('#obUseCustom').checked);
+}
+function maybeOnboard() {
+  $('#onboard').style.display = DATA.setupDone ? 'none' : 'flex';
+  if (DATA.setupDone) return;
+  const hasDefault = !!DATA.defaultOk;
+  $('#obDefault').style.display = hasDefault ? '' : 'none';
+  $('#obDefaultPath').textContent = DATA.defaultRoot || '';
+  const s = DATA.defaultStats;
+  $('#obDefaultStat').textContent = s ? `已检测到 ${s.sessions} 个会话 · ${s.records} 条用量记录` : '';
+  $('#obUseDefault').checked = hasDefault;
+  $('#obUseCustom').checked = !hasDefault;
+  syncObSel();
+}
+function initOnboard() {
+  $('#obDefault').addEventListener('click', () => { $('#obUseDefault').checked = true; syncObSel(); });
+  $('#obCustom').addEventListener('click', () => { $('#obUseCustom').checked = true; syncObSel(); $('#obInput').focus(); });
+  $('#obInput').addEventListener('input', () => { $('#obUseCustom').checked = true; syncObSel(); });
+  $('#obStart').addEventListener('click', async () => {
+    const useDefault = $('#obUseDefault').checked && DATA.defaultOk;
+    const p = useDefault ? DATA.defaultRoot : $('#obInput').value.trim();
+    if (!p) { $('#obErr').textContent = '请先输入目录路径'; return; }
+    const j = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roots: [p], setupDone: true }) }).then(r => r.json());
+    if (!j.roots.length) { $('#obErr').textContent = '该路径无效或未找到会话数据，请确认后重试'; return; }
+    DATA.roots = j.roots; DATA.setupDone = true;
+    $('#onboard').style.display = 'none';
+    await loadData();
+  });
+}
+
+// ---------- 初始化 ----------
+(function init() {
+  applyTheme();
+  // 多选弹层开关
+  $('#msModelBtn').addEventListener('click', () => togglePanel('model'));
+  $('#msProjBtn').addEventListener('click', () => togglePanel('proj'));
+  // 横条行点击 = 加入/移出多选
+  $('#byModel').addEventListener('click', e => {
+    const row = e.target.closest('.hbar-row[data-model]'); if (!row) return;
+    const k = row.dataset.model;
+    fltModel.has(k) ? fltModel.delete(k) : fltModel.add(k);
+    refreshFilterOptions(); saveUI(); render();
+  });
+  $('#byProject').addEventListener('click', e => {
+    const row = e.target.closest('.hbar-row[data-proj]'); if (!row) return;
+    const k = row.dataset.proj;
+    fltProj.has(k) ? fltProj.delete(k) : fltProj.add(k);
+    refreshFilterOptions(); saveUI(); render();
+  });
+  $('#fltClear').addEventListener('click', () => {
+    fltModel.clear(); fltProj.clear();
+    refreshFilterOptions(); saveUI(); render();
+  });
+
+  let ui = {};
+  try { ui = JSON.parse(localStorage.getItem('kimi-ui') || '{}'); } catch { }
+  if (ui.gran) $('#gran').value = ui.gran;
+  $('#includeCr').checked = ui.incCr === undefined ? true : !!ui.incCr; // 默认计入缓存读取
+  fltModel = new Set(Array.isArray(ui.model) ? ui.model : []);
+  fltProj = new Set(Array.isArray(ui.proj) ? ui.proj : []);
+  onPanelChange('#msModelPanel', 'model');
+  onPanelChange('#msProjPanel', 'proj');
+  initHeatmapUi();
+  initDirUi();
+  initOnboard();
+  if (ui.hm && ui.hm !== 'day') {
+    hmMode = ui.hm;
+    document.querySelectorAll('#hmModes .chip').forEach(x => x.classList.toggle('on', x.dataset.m === hmMode));
+  }
+  $('#barModes').addEventListener('click', e => {
+    const c = e.target.closest('.chip'); if (!c) return;
+    barMode = c.dataset.b;
+    document.querySelectorAll('#barModes .chip').forEach(x => x.classList.toggle('on', x === c));
+    saveUI(); render();
+  });
+  if (ui.bar === 'model') {
+    barMode = 'model';
+    document.querySelectorAll('#barModes .chip').forEach(x => x.classList.toggle('on', x.dataset.b === 'model'));
+  }
+  if (ui.preset === 'custom' && (ui.from || ui.to)) {
+    $('#from').value = ui.from || '';
+    $('#to').value = ui.to || '';
+    $('#applyCustom').click();
+  } else {
+    applyPreset(ui.preset || 'all');
+  }
+  loadData();
+})();
+</script>
+</body>
+</html>
