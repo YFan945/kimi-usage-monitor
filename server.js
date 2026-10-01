@@ -9,6 +9,7 @@
  */
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 // SEA 单文件模式检测（KimiMonitor.exe）：资源内嵌、数据/配置写在 exe 旁边
@@ -22,9 +23,14 @@ const ASSETS = isSEA ? {
 } : null;
 
 const HOME = process.env.USERPROFILE || process.env.HOME;
-const APP_DIR = isSEA ? path.dirname(process.execPath) : __dirname;
-const PUBLIC_DIR = path.join(APP_DIR, 'public');
-const CONFIG_FILE = path.join(APP_DIR, 'config.json');
+// 配置目录：Windows 单文件 exe → exe 旁（便携）；macOS .app → Application Support；纯 node 运行 → 项目目录
+let CONFIG_DIR;
+if (isSEA) CONFIG_DIR = path.dirname(process.execPath);
+else if (process.platform === 'darwin') CONFIG_DIR = path.join(os.homedir(), 'Library', 'Application Support', 'KimiMonitor');
+else CONFIG_DIR = __dirname;
+try { fs.mkdirSync(CONFIG_DIR, { recursive: true }); } catch { }
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
 
 const argvPortIdx = process.argv.indexOf('--port');
 const PORT = Number(
@@ -297,7 +303,7 @@ server.on('error', e => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
-  try { fs.writeFileSync(path.join(APP_DIR, 'port.txt'), String(PORT)); } catch { }
+  try { if (process.platform === 'win32') fs.writeFileSync(path.join(CONFIG_DIR, 'port.txt'), String(PORT)); } catch { }
   console.log(`[kimi-usage-monitor] http://127.0.0.1:${PORT}`);
   console.log(`[kimi-usage-monitor] 数据目录: ${CFG.roots.join(' ; ') || '(未配置，请打开页面右上角"数据目录"添加)'}`);
   if (isSEA && !process.env.KIMI_NO_OPEN) openBrowser(`http://127.0.0.1:${PORT}/`);

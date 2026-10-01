@@ -8,9 +8,10 @@
 
 | 文件 | 平台 | 用法 |
 |---|---|---|
-| `KimiMonitor-Windows-x64.exe` | Windows 10/11 x64 | 单文件，双击即用（SmartScreen 提示选"仍要运行"） |
+| `KimiMonitor-Setup-1.0.0.exe` | Windows 10/11 x64 | **安装版（推荐）**：双击安装 → 开始菜单/桌面快捷方式；卸载走"设置 → 应用 → 已安装的应用" |
+| `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"） |
 | `KimiMonitor-Windows-Portable.zip` | Windows | 绿色文件夹版，解压后双击 `启动监控.bat` |
-| `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压得到 App，右键 → 打开（详见包内说明） |
+| `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「Kimi Monitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
 
 也可以直接克隆本仓库用 `node server.js` 运行（见下文"文件夹版移植"）。
 
@@ -31,7 +32,8 @@
 
 两个包都把服务端与页面资源打进/放进程内部，数据目录通过首次引导或页面右上角"数据目录"配置，配置文件保存在程序旁边（Windows）或 App 沙盒旁（macOS）。
 
-自己重新构建 Windows exe：`node --experimental-sea-config sea-config.json` → 复制 node.exe → `npx postject` 注入 blob（见 sea-config.json）。
+自己重新构建 Windows exe：`node --experimental-sea-config sea-config.json` → 复制 node.exe → `npx postject` 注入 blob（见 sea-config.json）；
+构建 Windows 安装包：安装 [Inno Setup](https://jrsoftware.org/isinfo.php) 后运行 `ISCC.exe packaging\installer.iss`（产物在 `dist\`）。
 
 ## 文件夹版移植（不用单文件包时）
 
