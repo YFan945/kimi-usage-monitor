@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 'use strict';
 /*
- * KimiMonitor 一键打包脚本（零依赖，Node >= 20）
+ * KimiMonitor Node/SEA 维护版打包（Windows，Node >= 20.12；非 Rust 桌面构建）
  * 用法：
  *   node build.js            构建全部 Windows 产物到 dist\（单文件 exe + 安装包 + 绿色版 zip）+ 冒烟测试
  *   node build.js --mac      额外构建 macOS .app 包（需联网下载 node 官方二进制，约 100MB）
- *   node build.js --release  构建后把产物上传到 GitHub Release v<版本号>（已有则覆盖资产）
- * 版本号统一在 packaging/installer.iss 的 #define MyAppVersion 处修改。
+ *   node build.js --release  直接发布 Node 维护版（已有则覆盖同名资产；新建不设为 Latest）
+ * Node 版本在 packaging/installer.iss 的 MyAppVersion 修改，与 Rust/npm 版本独立。
  */
 const { spawnSync, spawn } = require('child_process');
 const fs = require('fs');
@@ -120,7 +120,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
     run(iscc, [path.join(ROOT, 'packaging', 'installer.iss')]);
     ok(`dist/KimiMonitor-Setup-${VER}.exe`);
   } else {
-    console.warn('\x1b[33m[build] ! 未找到 ISCC.exe，跳过安装包。安装 Inno Setup 后重跑即可。\x1b[0m');
+    console.warn('\x1b[33m[build] ! 未检测到 Inno Setup 编译器，跳过 Windows 安装包；需要安装包时安装 Inno Setup 后重新构建。\x1b[0m');
   }
 
   // ---------- 4. Windows 绿色版 zip ----------
@@ -210,7 +210,7 @@ open "http://127.0.0.1:$PORT/"
 # KimiMonitor 卸载脚本
 pkill -f "node-darwin.*/KimiMonitor.app" 2>/dev/null
 rm -rf "/Applications/KimiMonitor.app" "$HOME/Library/Application Support/KimiMonitor"
-echo "KimiMonitor 已卸载。"
+echo "应用与 Node 配置清理操作已结束；如有错误请查看上方输出。请确认原监控进程已退出。"
 `);
     const icns = path.join(app, 'Contents', 'Resources', 'icon.icns');
     const r = spawnSync('python', ['-c', 'from PIL import Image;import sys;Image.open(sys.argv[1]).save(sys.argv[2])', path.join(ROOT, 'icon-512.png'), icns]);
@@ -255,7 +255,9 @@ print("tared")`;
   if (WANT_RELEASE) {
     const tag = `v${VER}`;
     log(`上传到 GitHub Release ${tag}...`);
-    const notes = `KimiMonitor v${VER} 自动发布。\n\n| 文件 | 平台 | 说明 |\n|---|---|---|\n| KimiMonitor-Setup-${VER}.exe | Windows 10/11 x64 | 安装版（推荐） |\n| KimiMonitor-Windows-x64.exe | Windows | 便携单文件版 |\n| KimiMonitor-Windows-Portable.zip | Windows | 绿色文件夹版（含 node.exe） |\n${WANT_MAC ? '| Kimi-Monitor-macOS.tar.gz | macOS 11+ 双架构 | 解压拖入应用程序 |\n' : ''}\n完整说明见 [README](https://github.com/YFan945/kimi-usage-monitor#readme)。`;
+    const installerRow = assets.some(f => path.basename(f) === `KimiMonitor-Setup-${VER}.exe`)
+      ? `| KimiMonitor-Setup-${VER}.exe | Windows x64 | 当前用户安装，包含 Node runtime |\n` : '';
+    const notes = `# KimiMonitor v${VER} — Node/SEA 维护版\n\n此发行线通过本地 Node 服务读取 Kimi Code 会话日志，统计调用次数与 token 用量，包含子 agent；用量合计不代表费用或剩余额度。Rust/Tauri 继续作为 Latest。\n\n| 文件 | 平台 | 用法 |\n|---|---|---|\n${installerRow}| KimiMonitor-Windows-x64.exe | Windows x64 | 直接运行，配置保存在 exe 旁边 |\n| KimiMonitor-Windows-Portable.zip | Windows x64 | 完整解压后运行启动监控.bat，内含 runtime/node.exe |\n${WANT_MAC ? '| Kimi-Monitor-macOS.tar.gz | macOS 11+，Apple Silicon / Intel | 解压后打开 KimiMonitor.app，内含两种架构的 Node runtime |\n' : ''}\n关闭界面不会停止服务，请通过页面或 Windows 托盘“退出”。升级前先退出旧服务并保留配置；原 Kimi Code 会话文件只读。\n\n此说明由打包脚本生成，发布前请补充该版本实际修复和验证结果。完整使用、配置和迁移说明见 [README](https://github.com/YFan945/kimi-usage-monitor#readme)。`;
     const notesFile = path.join(DIST, 'notes.md');
     fs.writeFileSync(notesFile, notes);
     const exists = spawnSync('gh', ['release', 'view', tag, '--repo', REPO], { stdio: 'ignore', shell: true }).status === 0;

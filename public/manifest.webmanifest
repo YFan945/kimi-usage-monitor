@@ -1,7 +1,7 @@
 {
   "name": "KimiMonitor",
   "short_name": "KimiMonitor",
-  "description": "Kimi Code 用量监控",
+  "description": "查看本机 Kimi Code 调用次数和 token 用量；浏览器应用界面需要本地 KimiMonitor 服务运行",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

@@ -5,7 +5,8 @@
  * 扫描一个或多个数据目录下所有会话各 agent 目录的 wire.jsonl，
  * 解析其中的 usage.record 事件（每次 LLM API 调用一条），提供 JSON API + 静态页面。
  * 零依赖，Node >= 18 即可运行：node server.js [--port 43110]
- * 扫描目录保存在程序目录的 config.json 里，拷贝整个文件夹即可移植到其他 Windows 电脑。
+ * 扫描路径保存在 config.json；Windows 源码/SEA 配置随程序目录保存，macOS 使用 Application Support。
+ * 更换电脑或移动会话目录后需重新核对扫描路径。
  */
 const http = require('http');
 const fs = require('fs');
@@ -26,7 +27,7 @@ const ASSETS = isSEA ? {
 } : null;
 
 const HOME = process.env.USERPROFILE || process.env.HOME;
-// 配置目录：Windows 单文件 exe → exe 旁（便携）；macOS .app → Application Support；纯 node 运行 → 项目目录
+// 配置目录：Windows SEA → exe 旁；macOS Node（含源码运行）→ Application Support；其他源码运行 → server.js 旁
 let CONFIG_DIR;
 if (isSEA) CONFIG_DIR = path.dirname(process.execPath);
 else if (process.platform === 'darwin') CONFIG_DIR = path.join(os.homedir(), 'Library', 'Application Support', 'KimiMonitor');
@@ -234,7 +235,7 @@ function readState(sessDir) {
   return entry;
 }
 
-// 扫描单个会话目录（内含 state.json 与 agents/）
+// 扫描会话目录（含 agents/，state.json 可缺省，项目目录可由索引兜底）
 function scanSession(sessPath, sessName, index, sessions, records, seen, seenSessions) {
   try { sessPath = fs.realpathSync(sessPath); } catch { return; }
   const key = process.platform === 'win32' ? sessPath.toLowerCase() : sessPath;
@@ -426,7 +427,7 @@ const logErr = (...a) => { try { console.error(...a); } catch { } };
 
 server.on('error', e => {
   if (e && e.code === 'EADDRINUSE') {
-    log(`[kimi-usage-monitor] 端口 ${PORT} 已被占用（可能服务已在运行），直接复用。`);
+    log(`[kimi-usage-monitor] 端口 ${PORT} 已被占用，本次服务未启动；请确认占用者是 KimiMonitor，或更换端口。`);
     if (isSEA && !process.env.KIMI_NO_OPEN) openBrowser(`http://127.0.0.1:${PORT}/`);
     process.exit(0);
   }

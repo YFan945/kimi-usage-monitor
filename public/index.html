@@ -151,27 +151,27 @@ footer code{color:var(--text)}
   <header>
     <h1><span class="dot"></span>Kimi Code 用量监控</h1>
     <div class="h-meta">
-      <span id="updated">…</span>
-      <label><input type="checkbox" id="auto" checked> 自动刷新(10s)</label>
+      <span id="updated">正在读取本机会话记录…</span>
+      <label title="每 10 秒更新界面；关闭此项不会停止后台监控"><input type="checkbox" id="auto" checked> 自动刷新（10 秒）</label>
       <button id="dirBtn">数据目录</button>
       <button id="themeBtn">主题：自动</button>
       <button id="refreshBtn">刷新</button>
-      <button id="quitBtn" title="停止本地服务">退出</button>
+      <button id="quitBtn" title="停止当前监控服务；关闭窗口只会关闭或隐藏界面">退出</button>
     </div>
   </header>
 
   <div class="card" id="dirPanel" style="display:none">
-    <h2>扫描目录<span style="font-weight:400">可添加多个；路径结构需为 …\sessions\&lt;工作区&gt;\&lt;会话&gt;\agents（也兼容直接指向某个会话集合目录）</span></h2>
+    <h2>扫描目录<span style="font-weight:400">可添加多个 sessions 或工作区目录；会话日志位于各会话的 agents 子目录，重叠路径不会重复计数</span></h2>
     <div id="dirList"></div>
     <div class="range-row" style="margin-top:4px">
-      <input id="dirInput" style="flex:1;min-width:280px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-size:13px" placeholder="输入或粘贴目录路径，例如 C:\Users\你\.kimi-code\sessions">
+      <input id="dirInput" style="flex:1;min-width:280px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-size:13px" placeholder="填写本机会话目录，如 C:\Users\用户名\.kimi-code\sessions 或 /Users/用户名/.kimi-code/sessions">
       <button class="primary" id="dirAdd">添加</button>
     </div>
-    <div class="range-info">修改后立即重新扫描；配置保存在程序目录的 config.json——把整个程序文件夹拷到其他 Windows 电脑即可使用（无 Node 时把 node.exe 放入 runtime\ 子文件夹）。</div>
+    <div class="range-info">修改后重新读取数据。设置保存在当前版本的本地配置中；移除路径不会删除会话文件。更换电脑后，请重新确认本机数据目录。</div>
   </div>
 
   <div class="card">
-    <h2>Token 活动总览<span class="chips" id="hmModes">
+    <h2 title="显示最近约一年，不受下方时段和模型/项目筛选影响；累计从可见范围的第一周起算">Token 活动总览<span class="chips" id="hmModes">
       <span class="chip on" data-m="day">每日</span><span class="chip" data-m="week">每周</span><span class="chip" data-m="cum">累计</span>
     </span></h2>
     <div class="hm-wrap">
@@ -194,12 +194,12 @@ footer code{color:var(--text)}
         <option value="hour">按小时</option>
         <option value="day">按天</option>
       </select>
-      <label style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--muted)"><input type="checkbox" id="includeCr" checked> 包含缓存读取</label>
+      <label title="影响趋势图和模型/项目排行；总量卡片、活动总览和会话明细始终包含缓存读取" style="display:flex;align-items:center;gap:5px;cursor:pointer;color:var(--muted)"><input type="checkbox" id="includeCr" checked> 图表计入缓存读取</label>
       <span class="chips" id="presets">
         <span class="chip" data-p="today">今天</span>
-        <span class="chip" data-p="24h">最近24小时</span>
-        <span class="chip" data-p="7d">最近7天</span>
-        <span class="chip" data-p="30d">最近30天</span>
+        <span class="chip" data-p="24h">最近 24 小时</span>
+        <span class="chip" data-p="7d">最近 7 天</span>
+        <span class="chip" data-p="30d">最近 30 天</span>
         <span class="chip on" data-p="all">全部</span>
       </span>
     </div>
@@ -241,15 +241,15 @@ footer code{color:var(--text)}
   </div>
 
   <div class="grid2">
-    <div class="card"><h2>按模型</h2><div id="byModel"></div></div>
-    <div class="card"><h2>按项目</h2><div id="byProject"></div></div>
+    <div class="card"><h2 title="当前时段用量最高的前 8 项；点击切换筛选，排行本身不受模型/项目筛选影响">模型排行 · 前 8 项</h2><div id="byModel"></div></div>
+    <div class="card"><h2 title="当前时段用量最高的前 8 项；项目按完整工作目录分组，点击切换筛选">项目排行 · 前 8 项</h2><div id="byProject"></div></div>
   </div>
 
   <div class="card">
     <h2>会话明细<span id="sessCount"></span></h2>
     <div style="overflow-x:auto;max-height:480px;overflow-y:auto">
       <table>
-        <thead><tr><th>项目</th><th>会话标题</th><th class="num">调用</th><th class="num">输入</th><th class="num">输出</th><th class="num">缓存读</th><th class="num">合计</th><th>最后活动</th></tr></thead>
+        <thead><tr><th>项目</th><th>会话标题</th><th class="num">调用次数</th><th class="num">未缓存输入</th><th class="num">输出</th><th class="num">缓存读取</th><th class="num" title="包含未缓存输入、输出、缓存读取和缓存创建">Token 合计</th><th>最后调用</th></tr></thead>
         <tbody id="sessBody"></tbody>
       </table>
     </div>
@@ -263,7 +263,7 @@ footer code{color:var(--text)}
   <div class="ob-card">
     <img src="/icon.png" class="ob-logo" alt="">
     <h2>Kimi Code 用量监控</h2>
-    <p class="ob-sub">首次使用：选择要扫描的 Kimi Code 数据目录</p>
+    <p class="ob-sub">选择本机 Kimi Code 会话目录。监控只读取用量日志，不修改会话文件。</p>
     <div class="ob-opt" id="obDefault">
       <div class="ob-opt-head"><input type="radio" name="ob" id="obUseDefault" checked><span>使用检测到的默认位置</span></div>
       <div class="ob-path" id="obDefaultPath"></div>
@@ -271,7 +271,7 @@ footer code{color:var(--text)}
     </div>
     <div class="ob-opt" id="obCustom">
       <div class="ob-opt-head"><input type="radio" name="ob" id="obUseCustom"><span>指定其他目录</span></div>
-      <input id="obInput" class="ob-input" placeholder="例如 C:\Users\你\.kimi-code\sessions">
+      <input id="obInput" class="ob-input" placeholder="填写本机 sessions 目录的完整路径">
     </div>
     <div id="obErr" class="ob-err"></div>
     <button class="primary" id="obStart">开始使用</button>
@@ -498,8 +498,8 @@ function render() {
   sum.total = sum.i + sum.o + sum.r + sum.c;
 
   $('#stats').innerHTML = [
-    { k: 'API 调用次数', v: fmtFull(sum.n), s: '次模型请求' },
-    { k: '总 Tokens', v: fmt(sum.total), s: '全口径合计', full: sum.total },
+    { k: '模型调用次数', v: fmtFull(sum.n), s: '按用量记录计数，包含子 agent' },
+    { k: 'Token 合计', v: fmt(sum.total), s: '包含输入、输出及两类缓存用量', full: sum.total },
     { k: '输入（未缓存）', v: fmt(sum.i), s: pct(sum.i, sum.total), full: sum.i },
     { k: '输出', v: fmt(sum.o), s: pct(sum.o, sum.total), full: sum.o },
     { k: '缓存读取', v: fmt(sum.r), s: pct(sum.r, sum.total), full: sum.r },
@@ -522,7 +522,7 @@ function render() {
   drawCharts(recs, sum.n);
   drawBreakdowns(recsRange);
   drawSessions(recs);
-  $('#footer').innerHTML = `数据来自 ${((DATA.roots && DATA.roots.length) ? DATA.roots : ['~/.kimi-code/sessions']).map(r => '<code>' + esc(r) + '</code>').join(' 、 ')}（每次 LLM 请求一条 usage.record，含子 agent）。仅为 token 计数，不代表费用。`;
+  $('#footer').innerHTML = `扫描目录：${((DATA.roots && DATA.roots.length) ? DATA.roots.map(r => '<code>' + esc(r) + '</code>').join('、') : '尚未配置')}。调用次数按 usage.record 用量事件计数，包含子 agent；token 合计不代表费用、账户余额或剩余额度。`;
 }
 
 // ---------- 数据目录管理 ----------
@@ -563,9 +563,9 @@ function initDirUi() {
     await applyRoots((DATA.roots || []).filter(r => r !== b.dataset.p));
   });
   $('#quitBtn').addEventListener('click', () => {
-    if (!confirm('退出会停止本机监控服务，确定？')) return;
+    if (!confirm('退出 KimiMonitor？这会停止当前监控服务；关闭窗口不会停止后台监控。')) return;
     fetch('/api/quit', { method: 'POST' }).finally(() => {
-      document.body.innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;color:#8b949e;font-size:15px">本地服务已退出，可以关闭此窗口。下次双击"启动监控.bat"重新开始。</div>';
+      document.body.innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;color:#8b949e;font-size:15px">请关闭此窗口。若后台监控仍在运行，请使用托盘“退出”或原启动方式对应的停止入口。下次使用时重新启动 KimiMonitor。</div>';
     });
   });
 }
@@ -872,7 +872,7 @@ function initOnboard() {
     const p = useDefault ? DATA.defaultRoot : $('#obInput').value.trim();
     if (!p) { $('#obErr').textContent = '请先输入目录路径'; return; }
     const j = await fetch('/api/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ roots: [p], setupDone: true }) }).then(r => r.json());
-    if (!j.roots.length) { $('#obErr').textContent = '该路径无效或未找到会话数据，请确认后重试'; return; }
+    if (!j.roots.length) { $('#obErr').textContent = '该路径未被保存，请确认路径存在且当前用户可以访问。没有用量日志的目录会显示零条记录。'; return; }
     DATA.roots = j.roots; DATA.setupDone = true;
     $('#onboard').style.display = 'none';
     await loadData();

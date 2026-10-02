@@ -1,7 +1,7 @@
 {
   "name": "kimi-usage-monitor",
   "version": "2.0.0",
-  "description": "Kimi Code 用量监控（Node 源码版 + Tauri 桌面版）",
+  "description": "KimiMonitor：本地统计 Kimi Code 调用与 token 用量，提供 Rust/Tauri 桌面版及 Node/SEA 维护版",
   "main": "index.js",
   "scripts": {
     "test": "node --test",

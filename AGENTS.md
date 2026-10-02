@@ -2,7 +2,7 @@
 
 ## 项目结构与模块组织
 
-本项目监控本地 Kimi Code 会话的调用次数与 token 用量，提供 Node 服务版和 Tauri 桌面版。
+本项目从本机会话日志统计 Kimi Code 调用与 token 用量，提供 Rust/Tauri v2.x 桌面发行线和 Node/SEA v1.x 维护线，两者共享前端。
 
 - `server.js`：零运行时依赖的 CommonJS 服务，负责扫描、缓存、聚合和 HTTP API。
 - `public/`：共享前端；`index.html` 内含 HTML、CSS 和 JavaScript，另有 PWA manifest 与图标。
@@ -14,7 +14,7 @@
 
 - `node server.js`：启动源码版，访问 `http://127.0.0.1:43110`；需要 Node.js ≥ 18。
 - `node server.js --port 8080`：指定端口，也可设置 `KIMI_MONITOR_PORT`。
-- `npm install`：安装 Tauri CLI；Node 服务本身无需此步骤。
+- `npm ci`：按 lockfile 安装 Tauri CLI；Node 服务本身无需此步骤。
 - `npm run desktop:dev`：运行 Tauri 开发模式。
 - `npm run desktop`：构建桌面安装包；需要 Rust 及平台构建工具，Windows 还需 MSVC。
 - `node build.js`：构建 Windows SEA、执行冒烟测试并打包到 `dist/`；需要 Node.js ≥ 20.12，缺少 Inno Setup 时跳过安装器。
@@ -39,4 +39,4 @@ PR 应说明问题、行为变化、影响版本和验证结果；有关联 issu
 
 ## 配置与发布注意事项
 
-不要提交 `config.json`、`port.txt`、日志或真实会话数据；扫描应保持只读，服务绑定 loopback。`node build.js --release` 会上传并覆盖 Release 资产，推送 `v*` 标签也会触发桌面发布，仅在明确授权发布时执行。
+不要提交 `config.json`、`port.txt`、日志或真实会话数据；扫描保持只读，服务绑定 loopback。版本独立管理：Rust 核对 npm、Cargo 及 Tauri 配置，Node 核对 `packaging/installer.iss`。非 `v1.*` 的版本标签触发 Rust 构建并生成 Release 草稿，核验后再发布；Node 补丁不设为 Latest。`node build.js --release` 会直接新建 Release 或覆盖同名资产，仅在明确授权发布时执行。说明文件须区分自动化验证、打包成功与实机验收，不能将它们互相替代。

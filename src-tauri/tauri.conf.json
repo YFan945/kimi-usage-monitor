@@ -14,6 +14,8 @@
   },
   "bundle": {
     "active": true,
+    "shortDescription": "Kimi Code 调用次数与 token 用量的本地监控工具",
+    "longDescription": "KimiMonitor Rust/Tauri 桌面版读取本机 Kimi Code 会话日志，提供用量趋势、活动热力图、模型和项目筛选。支持原生窗口与托盘；关闭窗口后监控继续运行，通过退出入口停止。统计包含子 agent，用量合计不代表费用或账户剩余额度。",
     "targets": [
       "nsis",
       "app",

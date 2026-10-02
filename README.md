@@ -1,193 +1,193 @@
 # KimiMonitor — Kimi Code 用量监控
 
-本地桌面应用，监控 [Kimi Code](https://www.kimi.com/)（月之暗面 CLI）的 API 调用次数与 token 消耗。
-v2.0.0 以 Rust + Tauri 桌面版为正式发行版，提供原生窗口与托盘，支持任意时段筛选、按模型/项目多选筛选、GitHub 风格热力总览、双主题。Node/SEA 作为独立的 v1.x 维护线，最新补丁为 v1.2.1，仓库保留兼容源码与打包脚本。
+KimiMonitor 读取本机 [Kimi Code](https://www.kimi.com/) 会话日志，统计模型调用次数和 token 用量，并提供趋势图、活动热力图、模型与项目筛选。统计包含子 agent 的用量记录，不用于计算费用。
 
-## 下载安装（成品包）
+项目提供两条发行线，共享同一套界面：
 
-到 [Releases](../../releases/latest) 页面下载，无需自己构建：
-
-| 文件 | 平台 | 用法 |
+| 发行线 | 当前版本 | 运行方式 |
 |---|---|---|
-| [`KimiMonitor_2.0.0_x64-setup.exe`](../../releases/download/v2.0.0/KimiMonitor_2.0.0_x64-setup.exe) | Windows 10/11 x64 | **Rust/Tauri 安装版**：原生托盘，双击安装（需要 WebView2，Win11 自带） |
-| [`KimiMonitor_2.0.0_universal.dmg`](../../releases/download/v2.0.0/KimiMonitor_2.0.0_universal.dmg) | macOS 11+ 双架构 | **Rust/Tauri 版 .dmg**：拖入「应用程序」，首次右键 → 打开（未签名） |
+| **Rust/Tauri 桌面版** | **v2.0.0，Latest** | 原生窗口和托盘，Windows 安装包、macOS 双架构 DMG |
+| **Node/SEA 维护版** | **v1.2.1** | Windows 安装版、单文件版、绿色版，以及 macOS Node 应用包 |
 
-### 旧版 Node/SEA 下载
+Node/SEA v1.2.1 已包含统计溢出、重复扫描、JSONL 漏读、缺少会话元数据、异常请求和相对时间刷新等修复。历史版本继续保留在 [Releases](https://github.com/YFan945/kimi-usage-monitor/releases)，维护版不会取代 Rust 版的 Latest 标记。
 
-需要 Node 安装版、单文件版或绿色版时，访问 [v1.2.1 补丁 Release](../../releases/tag/v1.2.1)。此补丁包含统计溢出、重叠目录重复计数、JSONL 漏读、缺少会话元数据、异常请求和相对时间刷新修复。[v1.2.0 历史资产](../../releases/tag/v1.2.0)继续保留；Rust v2.0.0 仍为 Latest。
+## 下载与选择版本
 
-| 文件 | 平台 | 用法 |
+### Rust/Tauri 桌面版
+
+从 [v2.0.0 Release](https://github.com/YFan945/kimi-usage-monitor/releases/tag/v2.0.0) 下载，无需安装 Node.js 或 Rust：
+
+| 文件 | 平台 | 安装方式 |
 |---|---|---|
-| `KimiMonitor-Setup-1.2.1.exe` | Windows 10/11 x64 | Node/SEA 安装版：免管理员权限安装，使用 PowerShell 托盘 |
-| `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"）；首次运行自动在桌面创建「KimiMonitor」快捷方式 |
-| `KimiMonitor-Windows-Portable.zip` | Windows | 绿色文件夹版，解压后双击 `启动监控.bat` |
-| `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「KimiMonitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
+| [KimiMonitor_2.0.0_x64-setup.exe](https://github.com/YFan945/kimi-usage-monitor/releases/download/v2.0.0/KimiMonitor_2.0.0_x64-setup.exe) | Windows x64 | 运行安装器；需要 WebView2，缺少时按安装器提示处理 |
+| [KimiMonitor_2.0.0_universal.dmg](https://github.com/YFan945/kimi-usage-monitor/releases/download/v2.0.0/KimiMonitor_2.0.0_universal.dmg) | macOS，Apple Silicon / Intel | 打开 DMG，将 KimiMonitor 拖入“应用程序” |
 
-## 如何使用
+macOS 包未签名或公证，首次打开可能受到系统拦截。请确认文件来自本仓库的 Release，再按系统提供的方式允许打开。
 
-### 启动
+### Node/SEA 维护版
 
-- **源码运行**：装好 Node.js（≥ 18）后运行 `node server.js`，浏览器打开 <http://127.0.0.1:43110>
-- **桌面窗口**：双击 `启动监控.bat` —— 启动本地服务并以 Edge 应用模式独立窗口打开（无地址栏，像普通桌面程序；没装 Edge 则用默认浏览器）
-- 换端口：`node server.js --port 8080`，或设环境变量 `KIMI_MONITOR_PORT`
+从 [v1.2.1 Release](https://github.com/YFan945/kimi-usage-monitor/releases/tag/v1.2.1) 下载：
 
-### 停止
+| 文件 | 平台 | 运行方式 |
+|---|---|---|
+| [KimiMonitor-Setup-1.2.1.exe](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.1/KimiMonitor-Setup-1.2.1.exe) | Windows x64 | 当前用户安装，默认位置为 `%LOCALAPPDATA%\Programs\KimiMonitor` |
+| [KimiMonitor-Windows-x64.exe](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.1/KimiMonitor-Windows-x64.exe) | Windows x64 | 直接运行；首次启动会尝试创建桌面快捷方式 |
+| [KimiMonitor-Windows-Portable.zip](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.1/KimiMonitor-Windows-Portable.zip) | Windows x64 | 解压后运行 `启动监控.bat`；包内已含 `runtime/node.exe` |
+| [Kimi-Monitor-macOS.tar.gz](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.1/Kimi-Monitor-macOS.tar.gz) | macOS 11+，Apple Silicon / Intel | 解压后将 KimiMonitor.app 放入“应用程序”；包内含两种架构的 Node runtime |
+| [SHA256SUMS.txt](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.1/SHA256SUMS.txt) | 所有 Node 发行包 | 用于核对四个安装包或压缩包的 SHA-256 |
 
-关闭窗口不会停止后台服务。停止方式任选其一：
+这些成品包均自带运行所需的 Node，无需另行安装。Windows 版优先以 Edge 应用窗口打开界面，没有 Edge 时使用默认浏览器。macOS Node 版打开浏览器界面，没有原生托盘。
 
-- 双击 `停止监控.bat`
-- 点页面右上角"退出"
+Windows 可用 PowerShell 核对下载文件：
 
-重复运行启动脚本无副作用：检测到端口被占用时新进程会自动退出，复用已在运行的服务。
-
-### 首次运行引导
-
-第一次启动会进入初始化引导，自动探测默认数据目录 `C:\Users\<用户名>\.kimi-code\sessions`（macOS 为 `~/.kimi-code/sessions`）并显示会话统计，确认即可；Kimi Code 数据不在常用位置就选"指定其他目录"手填。
-
-### 数据目录
-
-- 页面右上角"数据目录"面板可随时增删扫描目录，修改后立即重新扫描；不存在的路径会被自动剔除
-- 路径结构需为 `…\sessions\<工作区>\<会话>\agents`，也兼容直接指向某个会话集合目录
-- 扫描目录保存在 `config.json`（源码运行 = 项目目录；Windows exe = exe 旁边；macOS = `~/Library/Application Support/KimiMonitor`），其余界面状态（主题、时段、筛选）保存在浏览器 localStorage
-
-## 各版本的使用差异（后台与退出）
-
-本应用由「后台服务 + 界面窗口」两部分组成。**关闭应用窗口 ≠ 退出**：窗口关掉后服务仍在后台运行（右下角托盘图标），要彻底退出请用下面的退出方式。
-
-### Rust/Tauri v2.0.0（当前正式版）
-
-- **启动**：开始菜单/桌面快捷方式「KimiMonitor」，原生窗口 + 原生托盘图标（无控制台、无 Edge 依赖）；内嵌服务仅绑定 `127.0.0.1`，优先使用 `43110`，被占用时自动选择空闲端口
-- **后台**：关闭应用窗口 = 隐藏到后台，托盘常驻；托盘左键或菜单「打开窗口」恢复
-- **退出**：托盘右键 →「退出」，服务与托盘一起彻底关闭
-- **卸载**：设置 → 应用 → KimiMonitor → 卸载，同时清理配置目录（`%APPDATA%\com.yfan945.kimimonitor`）
-- **构建**：需要 Rust + MSVC 构建工具，`npm install` 后 `npm run desktop`，产物在 `src-tauri/target/release/bundle/nsis/`
-
-### Node/SEA 安装版（KimiMonitor-Setup-x.x.x.exe）
-
-- **启动**：开始菜单或桌面快捷方式「KimiMonitor」（安装时可选择是否创建），没有控制台黑窗
-- **后台**：关闭应用窗口后右下角托盘图标仍在，左键或右键菜单可「打开窗口」或「退出」
-- **退出**：托盘右键 →「退出」，或页面右上角「退出」——服务、托盘、应用窗口会一起关闭
-- **卸载**：设置 → 应用 → KimiMonitor → 卸载。会先结束后台服务和应用窗口，并**询问是否删除配置文件**（config.json，含数据目录设置，选否则下次安装保留设置）；被监控的 Kimi Code 会话数据（`~/.kimi-code`）不受任何影响；应用在注册表中只有 Windows 标准的卸载信息，卸载时自动移除，本应用自身不写任何注册表项
-
-### 便携单文件版（KimiMonitor-Windows-x64.exe）
-
-- **启动**：双击 exe（无控制台黑窗），首次运行自动在桌面创建「KimiMonitor」快捷方式
-- **后台 / 退出**：同安装版（托盘退出 / 页面退出）
-- **卸载**：无任何安装与注册表信息，退出后直接删 exe 即可；配置文件 config.json 生成在 exe 旁边，想要干净卸载就一并删除
-
-### 绿色文件夹版（KimiMonitor-Windows-Portable.zip）
-
-- **启动**：解压后双击「启动监控.bat」（电脑没有 Node 时，把 node.exe 放进 `runtime\` 子文件夹，见打包章节）
-- **后台 / 退出**：同安装版；也可双击「停止监控.bat」结束服务
-- **卸载**：退出后直接删除整个文件夹
-
-### macOS
-
-**Tauri 版（推荐，双架构 .dmg）**：因 macOS 应用必须在 macOS 上构建，仓库用 GitHub Actions 云端产出——推 `v*` 标签会构建并附加到 Release；在 Actions 页手动运行「Build desktop apps」时，从该次运行的 artifacts 下载。应用未做签名/公证，首次打开需右键 → 打开（或 `xattr -cr /Applications/KimiMonitor.app`）。后台/退出行为与 Windows Tauri 版一致（关窗隐藏到后台、托盘退出）。
-
-**Node 版（Kimi-Monitor-macOS.tar.gz，旧）**：
-
-- **启动**：打开「KimiMonitor.app」，自动打开浏览器页面；关闭页面后服务仍在后台
-- **退出**：在「活动监视器」结束 node 进程，或直接双击包内「卸载.command」（同时删除 App 与 `~/Library/Application Support/KimiMonitor`）
-
-## 打包成桌面应用
-
-### 一键打包（推荐）
-
-双击 `build.bat`（或命令行运行 `node build.js`），自动完成：读取版本号 → 构建单文件 exe → 冒烟测试 → 安装包 → 绿色版 zip，产物生成在 `dist\`。可选参数：
-
-- `--mac`：额外构建 macOS .app 包（自动下载 node 官方双架构二进制，约 100MB）
-- `--release`：构建后把产物上传到 GitHub Release v<版本号>（已存在该 Release 则覆盖资产）
-
-依赖：Node.js ≥ 20（必装）；Inno Setup（缺则跳过安装包）；Python + Pillow（仅 mac 包图标需要）。
-
-以下是从零手工复现各成品包的步骤（在 Windows 上构建）。
-
-### 1. Windows 单文件 exe（Node SEA）
-
-把页面资源内嵌进 Node 官方单文件应用（SEA）机制：
-
-```bat
-mkdir dist
-node --experimental-sea-config sea-config.json
-copy "%CD%\..\node\node.exe" dist\KimiMonitor.exe   &rem 或复制任意 Node ≥ 20.12 的 node.exe
-npx postject dist\KimiMonitor.exe NODE_SEA_BLOB sea-prep.blob --sentinel-fuse %FUSE%
+```powershell
+Get-FileHash .\KimiMonitor-Setup-1.2.1.exe -Algorithm SHA256
 ```
 
-哨兵 fuse 随 Node 版本不同：Node 20/22 为 `NODE_SEA_FUSE_fce6eababc5e6c1af2e46e1b3d2d4cc4`，Node 24 为 `NODE_SEA_FUSE_fce680ab2cc467b6e072b8b5df1996b2`。查你本机 node.exe 的实际值：
+将结果与同一 Release 的 `SHA256SUMS.txt` 对比。
 
-```bat
-grep -abo NODE_SEA_FUSE "C:\Program Files\nodejs\node.exe"
+## 开始使用
+
+1. 启动所选版本，首次引导会探测 `~/.kimi-code/sessions`。Windows 通常为 `C:\Users\<用户名>\.kimi-code\sessions`。
+2. 确认默认位置，或填写自己的会话目录。目录存在但没有可识别日志时，统计会显示为零。
+3. 进入界面后，使用“数据目录”添加或移除扫描路径，再选择时段、模型或项目。
+
+支持以下目录布局；添加的是 `sessions` 或工作区目录，不是单个 `wire.jsonl` 文件：
+
+```text
+sessions/<工作区>/<会话>/agents/<agent>/wire.jsonl
+工作区目录/<会话>/agents/<agent>/wire.jsonl
 ```
 
-产物 `dist\KimiMonitor.exe`（约 90MB）双击即用：自动起服务、以 Edge 应用模式开窗、首次运行自动在桌面创建「KimiMonitor」快捷方式（只创建一次，由 config.json 的 `shortcut` 字段标记）；配置写在 exe 旁边。
+重叠路径按会话真实路径去重，同一会话只统计一次。保存目录配置时，不存在的路径会被剔除。移除扫描路径只修改配置，不删除 Kimi Code 会话文件。
 
-- `sea-config.json` 声明了内嵌资产（`index.html` / `icon.png` / `favicon.ico`），`server.js` 通过 `node:sea` 检测自己是否运行在 SEA 模式
-- 坑：不要用 rcedit 给这个 exe 换图标（90MB 的 Node 本体会让它挂死）；图标通过旁边的 `.ico` 文件给快捷方式用
+## 窗口、后台与退出
 
-### 2. Windows 安装包（Inno Setup）
+| 版本 | 关闭窗口后 | 彻底退出 |
+|---|---|---|
+| Rust/Tauri | 窗口隐藏，监控继续运行；托盘可恢复窗口 | 托盘菜单“退出”，或页面“退出” |
+| Windows Node/SEA、绿色版 | 服务继续运行；PowerShell 托盘可重新打开界面 | 托盘“退出”、页面“退出”，或同目录下的 `停止监控.bat`（如有） |
+| macOS Node | 浏览器页面关闭，服务仍在后台 | 页面“退出”；无法打开页面时，在活动监视器中结束对应 Node 进程 |
 
-先按上一步生成 `dist\KimiMonitor.exe`，再安装 [Inno Setup](https://jrsoftware.org/isinfo.php)（中文语言包随附），运行：
+Windows Node 版退出时会尝试关闭标题匹配的应用窗口，普通浏览器页面可能需要手动关闭。安装 PWA 或把页面安装为浏览器应用只增加一个界面入口，本地服务仍需运行。
 
-```bat
-ISCC.exe packaging\installer.iss
-```
+## 配置、升级与卸载
 
-产物 `dist\KimiMonitor-Setup-1.2.1.exe`：免管理员权限安装到 `%LOCALAPPDATA%\Programs\KimiMonitor`，安装时可勾选是否创建开始菜单 / 桌面快捷方式（默认都创建），带“应用和功能”卸载项（卸载器询问是否删除配置文件）。版本号在 `packaging\installer.iss` 顶部 `#define` 处修改。
+扫描目录及首次引导状态保存在 `config.json`；主题、时段、筛选等界面设置保存在浏览器或 WebView 的 localStorage。
 
-### 3. macOS 应用包（.app）
+| 运行方式 | `config.json` 位置 |
+|---|---|
+| Windows Rust/Tauri | `%APPDATA%\com.yfan945.kimimonitor\config.json` |
+| macOS Rust/Tauri | `~/Library/Application Support/com.yfan945.kimimonitor/config.json` |
+| Windows Node/SEA 安装版 | `%LOCALAPPDATA%\Programs\KimiMonitor\config.json`（默认安装路径） |
+| Windows Node 单文件版 | exe 所在目录 |
+| Windows Node 源码版、绿色版 | `server.js` 所在目录 |
+| macOS Node，包括源码运行 | `~/Library/Application Support/KimiMonitor/config.json` |
 
-可在 Windows 上运行 `node build.js --mac` 自动组装 Node 版双架构 `.app` 并输出 `dist/Kimi-Monitor-macOS.tar.gz`。需要网络下载 Node 二进制及 Python；Pillow 用于生成图标。下列步骤用于手工复现，不是 Tauri `.dmg` 的构建方式：
+- **同一发行线升级**：先退出旧程序。Tauri 沿用应用标识与配置目录；Node 安装版沿用安装位置，便携版替换文件时保留 `config.json`。
+- **Node 与 Tauri 互相迁移**：先退出原服务，再启动目标版本。两者配置位置不同，请在引导中重新选择数据目录；界面设置也不会自动迁移。
+- **换电脑或移动会话目录**：配置中的路径需要在当前电脑上有效，请重新核对。
+- **Windows 卸载**：安装版通过系统“应用”列表卸载。Node 安装器会询问是否删除配置；Tauri 不应视为一定自动清理配置，需要彻底重置时，在退出后手动删除对应配置目录。
+- **macOS 卸载**：先退出，再删除“应用程序”中的 KimiMonitor.app；需要重置设置时删除上表对应目录。Node 包附带的 `卸载.command` 会删除应用及 Node 配置，请先退出服务再运行。
+- **便携版卸载**：先退出，再删除解压目录或 exe 及其旁边的配置文件。自动创建的桌面快捷方式可手动移除。
 
-1. 从 [nodejs.org](https://nodejs.org/dist/) 下载 macOS **arm64 与 x64** 两个官方 tarball（v22 LTS），解出各自 `bin/node`，存为 `Resources/bin/node-darwin-arm64`、`Resources/bin/node-darwin-x64`
-2. 把 `server.js` 与 `public/` 拷进 `Resources/app/`
-3. `Contents/MacOS/kimi-monitor` 写一个启动脚本：按 `uname -m` 选对应架构的 node 执行 `Resources/app/server.js`，然后打开浏览器
-4. `Info.plist` 设 `CFBundleExecutable=kimi-monitor`、`CFBundleIconFile=icon.icns`、`CFBundleName=KimiMonitor`
-5. 图标 `icon.icns` 由 `icon-512.png` 转换（Python Pillow 可直接生成 ICNS）
-6. 再包一层「卸载.command」脚本（`pkill` 掉服务 + 删除 .app 与 `~/Library/Application Support/KimiMonitor`），最后：
+以上操作针对 KimiMonitor 程序与配置，不需要删除 `~/.kimi-code` 中的原始会话。
+
+## 功能与统计口径
+
+- **活动总览**：按日、按周或累计显示最近约一年的活动，不受下方时段及模型/项目筛选影响。“累计”从当前可见范围的第一周起算。
+- **时段**：支持今天、最近 24 小时、最近 7 天、最近 30 天、全部与自定义范围。日历预设按本机时间计算，7 天和 30 天包含今天；相对范围在刷新或重新渲染时更新，自定义范围固定。
+- **趋势与筛选**：趋势图支持小时/天粒度，按 token 类型或模型着色；模型与项目均可多选，同一组内任选匹配，两组条件同时满足。
+- **模型/项目排行**：展示所选时段内用量最高的前 8 项，不随模型/项目筛选缩小，用于选择和切换筛选条件。
+- **缓存读取开关**：影响趋势图与排行的用量展示；总量卡片、活动总览和会话明细始终包含全部 token 类型。
+- **会话明细**：按调用次数排序，最多展示前 50 个有调用记录的会话。
+- **自动刷新**：界面每 10 秒请求一次数据。扫描复用未变化文件的缓存，日志变化时重读该文件；关闭自动刷新不会退出后台服务。
+- **主题**：自动跟随系统，或手动选择浅色/深色。
+
+每条可解析的 `usage.record` 事件计为一次调用，包含主 agent 和子 agent。token 合计为 `inputOther + output + inputCacheRead + inputCacheCreation`；异常或缺失的 token 字段按零处理，损坏的 JSON 行跳过。会话项目优先取 `state.json` 的 `cwd`，缺失时使用可找到的 `session_index.jsonl` 中的 `workDir`；没有 `state.json` 但有 `agents/` 的会话也会扫描。
+
+这是日志中记录的用量，不是 Kimi 账户账单、余额、剩余额度或实时价格。缓存读取量可能较大，不能用 token 总量直接推算费用。监控代码只读取原会话文件，不修改或删除它们。
+
+## 源码开发
+
+### Node 服务
+
+需要 Node.js ≥ 18；服务只使用 Node 内置模块，无需 `npm install`：
 
 ```bash
-tar czf dist/Kimi-Monitor-macOS.tar.gz "KimiMonitor.app" 卸载.command
+node server.js
+node server.js --port 8080
 ```
 
-未做公证，首次打开需右键 → 打开，或 `xattr -cr "KimiMonitor.app"`。
+默认访问 `http://127.0.0.1:43110`，指定端口时使用相应地址。端口也可由 `KIMI_MONITOR_PORT` 设置。Node 端口被占用时，新进程会退出，不会核验占用端口的程序是否为 KimiMonitor；遇到其他应用页面或无法启动时，请检查端口或换一个端口。
 
-### 4. Windows 绿色文件夹版（zip）
+### Rust/Tauri 桌面版
 
-把整个项目文件夹拷到目标机器，在没有 Node 的电脑上从 [nodejs.org](https://nodejs.org/download/release/) 的 Windows x64 zip 包里取出 `node.exe` 放进 `runtime\` 子文件夹（`启动监控.bat` 会自动识别），连同 bat 脚本一起打包成 zip 即可。
+需要 Rust 和相应平台构建工具；Windows 使用 MSVC，macOS 使用 Xcode Command Line Tools。安装 npm 开发依赖后运行：
 
-## 功能
+```bash
+npm ci
+npm run desktop:dev
+npm run desktop
+```
 
-- **Token 活动总览**（页首）：GitHub 风格的热力日历，正方形格子、追溯补足空周（最多约 1 年）铺满整行宽度；右上角"每日 / 每周 / 累计"三种模式；悬停显示"日期 / tokens · 调用次数"。始终展示全部数据，不随时段与筛选变化
-- **时段**：今天 / 24 小时 / 7 天 / 30 天 / 全部，或自定义起止时间；图表时间轴始终覆盖完整所选时段，空时段显示明确提示
-- **趋势图**：按天或按小时的堆叠柱状图，默认叠加缓存读取（紫色，可取消）；"着色"可切换按类型（输出/输入/缓存）/按模型（每模型一色，悬停看逐模型分解）；常规时段自适应铺满不出现横向滚动
-- **按模型/项目筛选（多选）**：趋势图上方下拉多选，或点击"按模型/按项目"横条行加入/移出筛选；多个条件叠加生效
-- **主题**：自动（跟随系统）/ 浅色 / 深色；界面状态自动记忆
-- **自动刷新**：每 10 秒增量扫描（只重读有变化的 wire.jsonl）
+Windows NSIS 安装包位于 `src-tauri/target/release/bundle/nsis/`。macOS 双架构包需在 macOS 上构建：
 
-## 数据口径
+```bash
+rustup target add aarch64-apple-darwin x86_64-apple-darwin
+npx tauri build --target universal-apple-darwin
+```
 
-数据来自各会话 `agents/*/wire.jsonl` 的 `usage.record` 事件——每次 LLM 请求（含子 agent）一条，
-字段为 `inputOther` / `output` / `inputCacheRead` / `inputCacheCreation`。只统计 token 数，不代表费用。
-会话的工作目录取自 `state.json` 的 `cwd`，缺失时用 `session_index.jsonl` 的 `workDir` 兜底；没有 `state.json` 但存在 `agents/` 的会话也会扫描。
-合法 JSONL 中的字段空格不影响解析，损坏行会跳过。重叠扫描目录按会话真实路径去重，同一个会话只计一次。
-“今天 / 24 小时 / 7 天 / 30 天”随页面刷新或重新渲染更新，自定义范围保持固定。
+DMG 位于 `src-tauri/target/universal-apple-darwin/release/bundle/dmg/`。Tauri 内嵌服务仅绑定 `127.0.0.1`，优先使用 `43110`，被占用时回退到空闲端口；窗口自动使用实际端口，不依赖 Edge。
 
-## 开发与回归测试
+## Node/SEA 打包
+
+`build.js` 在 Windows 上打包 Node 维护版，与 `npm run desktop` 的 Rust 构建分开：
+
+```bash
+node build.js
+node build.js --mac
+```
+
+也可运行 `build.bat` 并传入同样的参数。输出位于 `dist/`：单文件 exe、绿色版 ZIP、安装器（可用时），以及 `--mac` 生成的 macOS TAR 包。
+
+- Node.js ≥ 20.12：用于生成 SEA，并通过 `npx postject` 注入当前 Node 可执行文件；脚本自动检测 sentinel fuse，设置 GUI 子系统以隐藏控制台。
+- Inno Setup：用于生成 Windows 安装器；未检测到时跳过此产物。
+- Python：绿色版 ZIP 优先使用 Python，缺少时尝试 PowerShell；macOS TAR 打包需要 Python，Pillow 用于生成图标，缺少 Pillow 时仍可打包但没有应用图标。
+- `--mac`：下载脚本指定版本的官方 arm64/x64 Node runtime，再组装 `.app`；这不是 Tauri DMG 构建，也不代表已在 macOS 实机运行验证。
+
+完整流程包含 Windows SEA 启动、`/api/data` 响应与退出冒烟测试。成品绿色版已包含 runtime；仅自行复制源码到没有 Node 的 Windows 电脑时，才需要准备 `runtime/node.exe`。启动脚本优先使用 PATH 中的 Node，再使用包内 runtime。
+
+## 测试与发布
 
 ```bash
 npm test
 cargo test --manifest-path src-tauri/Cargo.toml --locked
 ```
 
-`npm test` 使用 Node 内置 `node:test`，测试真实 HTTP 服务与共享前端函数，无需安装运行时依赖。Rust 测试需要桌面构建工具链，验证 Tauri 数据引擎。全部会话样本均为临时目录中的合成数据，不扫描用户的真实会话。
+Node 内置 `node:test` 覆盖服务与共享前端函数；Rust 单元测试覆盖桌面数据引擎。测试使用临时合成会话，覆盖索引关联、重复目录、缺少元数据、JSONL 空格/损坏行、大数 token、相对时段与异常配置。Node 另覆盖非法 URL 和超过 1 MiB 的配置请求；无效请求保留原配置。
 
-回归覆盖会话索引、重叠目录、缺少元数据、JSONL 空格与损坏行、大数 token、相对时段、异常配置及非法 URL。配置请求需要 `roots` 字符串数组和可选的 `setupDone` 布尔值；Node 返回 `400` 拒绝无效配置，超过 1 MiB 返回 `413`，原配置保留。
+Windows SEA 可按 [AGENTS.md](AGENTS.md) 的方法直接运行二进制回归测试。自动化测试不覆盖安装器交互、系统托盘操作或各系统上的实机兼容性，这些行为仍需手动验收。
 
-`.github/workflows/test.yml` 在 PR 和 main 分支推送时运行回归测试；桌面构建工作流也先运行测试。自动化测试不覆盖窗口、托盘及安装器交互，相关修改仍需手动验证。
+| 发布线 | 版本来源 | 发布流程 |
+|---|---|---|
+| Rust/Tauri | `package.json` / npm lockfile、`src-tauri/Cargo.toml` / Cargo lockfile、`src-tauri/tauri.conf.json` | 回归 CI 通过后推送非 `v1.*` 的版本标签；两平台构建成功后生成 Release 草稿，核对资产再正式发布 |
+| Node/SEA | `packaging/installer.iss` 中的 `MyAppVersion` | 独立构建并验证 Node 产物，发布 `v1.x` 补丁；保留历史资产，不设为 Latest |
 
-Tauri 版本来自 `package.json`、`src-tauri/Cargo.toml` 和 `src-tauri/tauri.conf.json`；Node/SEA 安装器版本独立来自 `packaging/installer.iss`。`v1.*` 标签不触发 Rust 桌面构建。发布前核对对应产物的版本，`node build.js --release` 会上传并覆盖同名资产，新建 Node Release 时不将其设为 Latest。
+`.github/workflows/test.yml` 在 PR 和 main 推送时运行回归测试。手动运行 “Build desktop apps” 会生成 Actions artifacts；只有标签触发的构建才会生成 Release 草稿。
+
+`node build.js --release` 是 Node 发布辅助命令，需要已登录的 `gh`。它会直接新建 Release 或覆盖已有 Release 的同名资产，新建时使用 `--latest=false`，不提供上述人工核验草稿的完整流程。请只在明确准备发布时使用；更新维护版应创建新的补丁版本，不覆盖历史版本。
+
+## 常见问题
+
+**显示零条记录**：确认扫描的是会话集合或工作区目录，下面存在 `agents/<agent>/wire.jsonl`，日志包含 `usage.record`。目录存在不代表有可统计的用量。
+
+**关闭窗口后仍在运行**：使用页面或托盘“退出”；Node 绿色版还可运行 `停止监控.bat`。关闭浏览器、PWA 或 Tauri 窗口都不等于停止服务。
+
+**模型/项目排行与筛选后的合计不同**：排行用于展示当前时段的候选项，筛选只缩小合计、趋势和会话明细；活动总览独立显示最近约一年的活动。
+
+**浏览器或 WebView 数据不一致**：不同入口有各自的 localStorage；Node 和 Tauri 也使用不同配置目录。先确认当前版本、扫描路径、时段及筛选条件。
 
 ## 开源协议
 
-[MIT](LICENSE)
+[MIT License](LICENSE)。

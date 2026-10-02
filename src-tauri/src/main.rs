@@ -245,7 +245,7 @@ impl Engine {
         state
     }
 
-    // 扫描单个会话目录（内含 state.json 与 agents/）
+    // 扫描含 agents/ 的会话；state.json 可缺省，项目目录由可找到的索引兜底
     fn scan_session(&mut self, sess_path: &Path, sess_name: &str, index: &HashMap<String, String>, sessions: &mut Vec<Session>, records: &mut Vec<Rec>, seen: &mut HashMap<PathBuf, ()>, seen_sessions: &mut HashSet<PathBuf>) {
         let Ok(canonical) = std::fs::canonicalize(sess_path) else { return };
         let key = if cfg!(windows) { PathBuf::from(canonical.to_string_lossy().to_lowercase()) } else { canonical.clone() };
@@ -499,15 +499,15 @@ fn handle_conn(mut stream: TcpStream, engine: std::sync::Arc<std::sync::Mutex<En
     let Some((method, path, body)) = read_request(&mut stream) else { return Ok(()) };
 
     if path == "/api/data" && method == "GET" {
-        let s = engine.lock().map(|mut e| e.get_data_string()).unwrap_or_else(|_| "{\"error\":\"locked\"}".into());
+        let s = engine.lock().map(|mut e| e.get_data_string()).unwrap_or_else(|_| "{\"error\":\"监控数据暂不可用\"}".into());
         return respond(&mut stream, "200 OK", "application/json; charset=utf-8", s.into_bytes());
     }
     if path == "/api/config" && method == "POST" {
         let j: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
         if !valid_config(&j) {
-            return respond(&mut stream, "400 Bad Request", "application/json; charset=utf-8", b"{\"error\":\"invalid config\"}".to_vec());
+            return respond(&mut stream, "400 Bad Request", "application/json; charset=utf-8", json!({"error":"配置需要 roots 字符串数组及可选的 setupDone 布尔值"}).to_string().into_bytes());
         }
-        let s = engine.lock().map(|mut e| e.apply_config(&j)).unwrap_or_else(|_| "{\"error\":\"locked\"}".into());
+        let s = engine.lock().map(|mut e| e.apply_config(&j)).unwrap_or_else(|_| "{\"error\":\"配置暂时无法保存\"}".into());
         return respond(&mut stream, "200 OK", "application/json; charset=utf-8", s.into_bytes());
     }
     if path == "/api/open" && method == "POST" {
@@ -612,7 +612,7 @@ fn main() {
             }
         })
         .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .expect("启动 KimiMonitor Rust/Tauri 桌面版失败");
 }
 
 #[cfg(test)]

@@ -14,7 +14,7 @@ where node >nul 2>nul && set "NODE_EXE=node"
 if not defined NODE_EXE if exist "%~dp0runtime\node.exe" set "NODE_EXE=%~dp0runtime\node.exe"
 if defined NODE_EXE goto run
 echo [KimiMonitor] 未找到 Node.js。
-echo 请安装 Node.js，或从任意一台装了 Node 的电脑复制 node.exe 到 runtime\ 文件夹。
+echo 源码运行需要 Node.js 18 或更高版本；绿色发行包已含 runtime\node.exe，请确认完整解压。
 pause
 exit /b 1
 
@@ -28,5 +28,5 @@ set "EDGE=%ProgramFiles(x86)%\Microsoft\Edge\Application\msedge.exe"
 if not exist "%EDGE%" set "EDGE=%ProgramFiles%\Microsoft\Edge\Application\msedge.exe"
 if exist "%EDGE%" start "" "%EDGE%" --app="http://127.0.0.1:%PORT%/" --window-size=1280,900
 if not exist "%EDGE%" start "" "http://127.0.0.1:%PORT%/"
-echo 已打开监控窗口。关闭窗口不会停止服务；要停止请运行 停止监控.bat 或点页面右上角"退出"。
+echo 已尝试打开监控界面。关闭窗口不会停止服务；请通过页面或托盘"退出"，也可运行 停止监控.bat。
 ping -n 3 127.0.0.1 >nul

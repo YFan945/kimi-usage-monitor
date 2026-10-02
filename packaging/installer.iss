@@ -1,4 +1,4 @@
-; KimiMonitor — Windows 安装包脚本（Inno Setup）
+; KimiMonitor Node/SEA 维护版 — Windows 当前用户安装器（Inno Setup）
 ; 构建：ISCC.exe packaging\installer.iss
 #define MyAppName "KimiMonitor"
 #define MyAppVersion "1.2.1"
@@ -43,8 +43,8 @@ Source: "{#SourceDir}\README.md"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#SourceDir}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\{#MyAppName}"; Filename: "{app}\KimiMonitor.exe"; IconFilename: "{app}\KimiMonitor.ico"; Comment: "{#MyAppName}"; Tasks: startmenuicon
-Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\KimiMonitor.exe"; IconFilename: "{app}\KimiMonitor.ico"; Comment: "{#MyAppName}"; Tasks: desktopicon
+Name: "{group}\{#MyAppName}"; Filename: "{app}\KimiMonitor.exe"; IconFilename: "{app}\KimiMonitor.ico"; Comment: "查看本机 Kimi Code 调用次数与 token 用量（Node/SEA）"; Tasks: startmenuicon
+Name: "{autodesktop}\{#MyAppName}"; Filename: "{app}\KimiMonitor.exe"; IconFilename: "{app}\KimiMonitor.ico"; Comment: "查看本机 Kimi Code 调用次数与 token 用量（Node/SEA）"; Tasks: desktopicon
 
 [Run]
 Filename: "{app}\KimiMonitor.exe"; Description: "立即启动 {#MyAppName}"; Flags: nowait postinstall skipifsilent
@@ -61,6 +61,6 @@ Type: files; Name: "{app}\*.log"
 procedure CurUninstallStepChanged(CurUninstallStep: TUninstallStep);
 begin
   if CurUninstallStep = usUninstall then
-    if MsgBox('是否同时删除本应用的配置文件（config.json，含数据目录设置）？' #13#10 #13#10 '被监控的 Kimi Code 会话数据（~\.kimi-code）不受任何影响。', mbConfirmation, MB_YESNO) = IDYES then
+    if MsgBox('是否同时删除 KimiMonitor 的 config.json（扫描目录与首次引导设置）？' #13#10 #13#10 '选择“否”会保留此配置；本操作不删除 Kimi Code 原始会话。浏览器中的主题和筛选设置需在浏览器中单独清理。', mbConfirmation, MB_YESNO) = IDYES then
       DeleteFile(ExpandConstant('{app}\config.json'));
 end;
