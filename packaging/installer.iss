@@ -1,7 +1,7 @@
 ; KimiMonitor Node/SEA 维护版 — Windows 当前用户安装器（Inno Setup）
 ; 构建：ISCC.exe packaging\installer.iss
 #define MyAppName "KimiMonitor"
-#define MyAppVersion "1.2.4"
+#define MyAppVersion "1.2.5"
 #define MyAppPublisher "YFan945"
 #define MyAppURL "https://github.com/YFan945/kimi-usage-monitor"
 #define SourceDir ".."
