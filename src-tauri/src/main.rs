@@ -539,6 +539,35 @@ fn show_main(app: &AppHandle) {
     }
 }
 
+// v2.0.0 起 identifier 由 com.yfan945.kimimonitor 改为 kimimonitor：
+// 迁移旧配置文件到新目录，并清理旧目录（Roaming 配置 + Local WebView 缓存，均为应用自管数据）
+fn migrate_legacy_config(new_config_dir: &Path) {
+    let legacy_id = "com.yfan945.kimimonitor";
+    let mut legacy_dirs: Vec<PathBuf> = Vec::new();
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        legacy_dirs.push(PathBuf::from(appdata).join(legacy_id));
+    }
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        legacy_dirs.push(PathBuf::from(local).join(legacy_id));
+    }
+    if let Ok(home) = std::env::var("HOME") {
+        legacy_dirs.push(PathBuf::from(home).join("Library/Application Support").join(legacy_id));
+    }
+    for dir in &legacy_dirs {
+        let old_cfg = dir.join("config.json");
+        let new_cfg = new_config_dir.join("config.json");
+        if old_cfg.exists() && !new_cfg.exists() {
+            let _ = std::fs::create_dir_all(new_config_dir);
+            let _ = std::fs::copy(&old_cfg, &new_cfg);
+        }
+    }
+    for dir in &legacy_dirs {
+        if dir.exists() {
+            let _ = std::fs::remove_dir_all(dir);
+        }
+    }
+}
+
 fn main() {
     let engine = std::sync::Arc::new(std::sync::Mutex::new(Engine::new(PathBuf::from(""))));
 
@@ -552,6 +581,7 @@ fn main() {
                 .app_config_dir()
                 .unwrap_or_else(|_| PathBuf::from(std::env::var("APPDATA").unwrap_or_default()).join("KimiMonitor"));
             let _ = std::fs::create_dir_all(&config_dir);
+            migrate_legacy_config(&config_dir);
             {
                 let mut e = engine.lock().unwrap();
                 e.config_dir = config_dir;
