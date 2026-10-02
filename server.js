@@ -44,7 +44,7 @@ const PORT = Number(
 );
 
 // ---------- 配置 ----------
-const CFG = { roots: [], setupDone: false, shortcut: false };
+const CFG = { roots: [], setupDone: false, shortcut: false, closeBehavior: 'background' };
 const DEFAULT_ROOT = path.join(HOME, '.kimi-code', 'sessions');
 function loadConfig() {
   try {
@@ -53,6 +53,7 @@ function loadConfig() {
     if (typeof j.setupDone === 'boolean') CFG.setupDone = j.setupDone;
     else if (CFG.roots.length) CFG.setupDone = true; // 旧版配置已选过目录，视为完成引导
     if (typeof j.shortcut === 'boolean') CFG.shortcut = j.shortcut;
+    if (['close', 'background', 'ask'].includes(j.closeBehavior)) CFG.closeBehavior = j.closeBehavior;
   } catch { }
   if (!CFG.roots.length) {
     if (fs.existsSync(DEFAULT_ROOT)) CFG.roots.push(DEFAULT_ROOT); // 首次运行自动使用本机默认目录
@@ -61,7 +62,7 @@ function loadConfig() {
 }
 loadConfig();
 function saveConfig() {
-  try { fs.writeFileSync(CONFIG_FILE, JSON.stringify({ port: PORT, roots: CFG.roots, setupDone: !!CFG.setupDone, shortcut: !!CFG.shortcut }, null, 2)); } catch { }
+  try { fs.writeFileSync(CONFIG_FILE, JSON.stringify({ port: PORT, roots: CFG.roots, setupDone: !!CFG.setupDone, shortcut: !!CFG.shortcut, closeBehavior: CFG.closeBehavior }, null, 2)); } catch { }
 }
 
 // 单文件 exe（SEA）模式下首次运行自动创建桌面快捷方式（仅 Windows；由 config.json 的 shortcut 标记保证只创建一次）
@@ -360,7 +361,7 @@ const server = http.createServer((req, res) => {
     try {
       const d = getData();
       const dp = getDefaultProbe();
-      body = JSON.stringify({ generatedAt: Date.now(), roots: CFG.roots, setupDone: !!CFG.setupDone, defaultRoot: dp.root, defaultOk: dp.ok, defaultStats: dp.stats, sessions: d.sessions, records: d.records });
+      body = JSON.stringify({ generatedAt: Date.now(), roots: CFG.roots, setupDone: !!CFG.setupDone, closeBehavior: CFG.closeBehavior, defaultRoot: dp.root, defaultOk: dp.ok, defaultStats: dp.stats, sessions: d.sessions, records: d.records });
     } catch (e) {
       body = JSON.stringify({ generatedAt: Date.now(), roots: CFG.roots, setupDone: !!CFG.setupDone, sessions: [], records: [], error: String(e && e.message || e) });
     }
@@ -404,6 +405,26 @@ const server = http.createServer((req, res) => {
       wireCache.clear(); stateCache.clear(); indexCache.clear(); defaultProbe = null;
       lastScan = { at: 0, data: null };
       json(res, { ok: true, roots: CFG.roots, setupDone: !!CFG.setupDone, stats });
+    });
+    return;
+  }
+  if (url.pathname === '/api/settings' && req.method === 'POST') {
+    let raw = '';
+    req.setEncoding('utf8');
+    req.on('data', c => { raw += c; if (raw.length > 65536) raw = ''; });
+    req.on('end', () => {
+      let v;
+      try {
+        const j = JSON.parse(raw);
+        if (j && ['close', 'background', 'ask'].includes(j.closeBehavior)) v = j.closeBehavior;
+      } catch { }
+      if (!v) {
+        json(res, { error: 'closeBehavior 必须是 close / background / ask' }, 400);
+        return;
+      }
+      CFG.closeBehavior = v;
+      saveConfig();
+      json(res, { ok: true, closeBehavior: v });
     });
     return;
   }

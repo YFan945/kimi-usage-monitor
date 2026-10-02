@@ -111,6 +111,9 @@ tbody tr:hover{background:var(--hover)}
 .ms-item input{accent-color:var(--accent)}
 .ms-item .ms-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ms-item .ms-n{color:var(--muted);font-size:11px;font-variant-numeric:tabular-nums}
+.set-label{color:var(--muted);font-size:13px;margin-bottom:4px}
+.set-opt{display:flex;align-items:center;gap:8px;padding:5px 0;color:var(--text);cursor:pointer;font-size:13px}
+.set-opt input{accent-color:var(--accent)}
 .hm-wrap{display:flex;gap:8px}
 .hm-weeks{display:grid;grid-template-rows:repeat(7,var(--hm-cell,14px));gap:3px;color:var(--muted);font-size:9px;flex:none}
 .hm-weeks span{display:flex;align-items:center}
@@ -156,9 +159,19 @@ footer code{color:var(--text)}
       <button id="dirBtn">数据目录</button>
       <button id="themeBtn">主题：自动</button>
       <button id="refreshBtn">刷新</button>
+      <button id="settingsBtn" style="display:none">设置</button>
       <button id="quitBtn" title="停止当前监控服务；关闭窗口只会关闭或隐藏界面">退出</button>
     </div>
   </header>
+
+  <div class="card" id="settingsPanel" style="display:none;max-width:560px">
+    <h2>设置<span style="font-weight:400">以下选项仅在 Tauri 桌面版中生效</span></h2>
+    <div class="set-label">关闭应用窗口时：</div>
+    <label class="set-opt"><input type="radio" name="closeBehavior" value="close"> 直接关闭应用（结束后台服务）</label>
+    <label class="set-opt"><input type="radio" name="closeBehavior" value="background"> 最小化到托盘，后台继续运行</label>
+    <label class="set-opt"><input type="radio" name="closeBehavior" value="ask"> 每次询问（直接关闭 / 后台运行 / 取消）</label>
+    <div class="range-info">修改立即生效并保存，托盘菜单不再提供退出入口。</div>
+  </div>
 
   <div class="card" id="dirPanel" style="display:none">
     <h2>扫描目录<span style="font-weight:400">添加 Kimi Code 会话目录，支持多个目录</span></h2>
@@ -282,6 +295,7 @@ footer code{color:var(--text)}
 'use strict';
 const $ = s => document.querySelector(s);
 const DATA = { sessions: [], records: [], generatedAt: 0, sessionsRoot: '' };
+const IS_TAURI = new URLSearchParams(location.search).has('tauri') || !!window.__TAURI_INTERNALS__;
 let range = { start: null, end: null };   // null/null = 全部
 let curPreset = 'all';
 let fltModel = new Set(), fltProj = new Set();  // 模型/项目多选筛选（空集 = 不筛）
@@ -491,6 +505,9 @@ async function loadData() {
     const j = await r.json();
     if (!r.ok || j.error) throw new Error(j.error || `HTTP ${r.status}`);
     Object.assign(DATA, j);
+    if (IS_TAURI && DATA.closeBehavior) {
+      document.querySelectorAll('#settingsPanel input[name="closeBehavior"]').forEach(r => { r.checked = r.value === DATA.closeBehavior; });
+    }
     refreshFilterOptions();
     maybeOnboard();
     $('#updated').textContent = '数据更新于 ' + new Date(j.generatedAt).toLocaleTimeString('zh-CN', { hour12: false });
@@ -579,6 +596,22 @@ function initDirUi() {
     const b = e.target.closest('.dir-del'); if (!b) return;
     await applyRoots((DATA.roots || []).filter(r => r !== b.dataset.p));
   });
+  if (IS_TAURI) {
+    // Tauri 桌面版：没有“退出”按钮，退出 = 关闭窗口（行为由“设置”决定）
+    $('#quitBtn').style.display = 'none';
+    $('#settingsBtn').style.display = '';
+    $('#settingsBtn').addEventListener('click', () => {
+      const panel = $('#settingsPanel');
+      panel.style.display = panel.style.display === 'none' ? '' : 'none';
+    });
+    $('#settingsPanel').addEventListener('change', async e => {
+      const rb = e.target.closest('input[name="closeBehavior"]'); if (!rb) return;
+      try { await fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ closeBehavior: rb.value }) }); DATA.closeBehavior = rb.value; } catch {}
+    });
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#settingsPanel') && !e.target.closest('#settingsBtn')) $('#settingsPanel').style.display = 'none';
+    });
+  }
   $('#quitBtn').addEventListener('click', () => {
     if (!confirm('退出 KimiMonitor？这会停止当前监控服务；关闭窗口不会停止后台监控。')) return;
     fetch('/api/quit', { method: 'POST' }).finally(() => {

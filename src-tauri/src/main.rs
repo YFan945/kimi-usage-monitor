@@ -50,6 +50,7 @@ struct Session {
 struct Config {
     roots: Vec<String>,
     setup_done: bool,
+    close_behavior: String, // close=直接关闭 background=后台运行 ask=每次询问
 }
 
 #[derive(Default)]
@@ -157,7 +158,15 @@ impl Engine {
                 } else if !self.cfg.roots.is_empty() {
                     self.cfg.setup_done = true; // 旧版配置已选过目录，视为完成引导
                 }
+                if let Some(v) = j.get("closeBehavior").and_then(|v| v.as_str()) {
+                    if ["close", "background", "ask"].contains(&v) {
+                        self.cfg.close_behavior = v.to_string();
+                    }
+                }
             }
+        }
+        if !["close", "background", "ask"].contains(&self.cfg.close_behavior.as_str()) {
+            self.cfg.close_behavior = "background".into(); // 默认后台运行
         }
         if self.cfg.roots.is_empty() {
             let d = Self::default_root();
@@ -170,7 +179,7 @@ impl Engine {
     }
 
     fn save_config(&self) {
-        let body = json!({"roots": self.cfg.roots, "setupDone": self.cfg.setup_done});
+        let body = json!({"roots": self.cfg.roots, "setupDone": self.cfg.setup_done, "closeBehavior": self.cfg.close_behavior});
         let _ = std::fs::create_dir_all(&self.config_dir);
         let _ = std::fs::write(self.config_file(), serde_json::to_string_pretty(&body).unwrap_or_default());
     }
@@ -422,6 +431,7 @@ impl Engine {
             "generatedAt": now_ms(),
             "roots": self.cfg.roots,
             "setupDone": self.cfg.setup_done,
+            "closeBehavior": self.cfg.close_behavior,
             "defaultRoot": default_root,
             "defaultOk": ok,
             "defaultStats": default_stats,
@@ -567,6 +577,21 @@ fn handle_conn(mut stream: TcpStream, engine: std::sync::Arc<std::sync::Mutex<En
         let s = engine.lock().map(|mut e| e.apply_config(&j)).unwrap_or_else(|_| "{\"error\":\"配置暂时无法保存\"}".into());
         return respond(&mut stream, "200 OK", "application/json; charset=utf-8", s.into_bytes());
     }
+    if path == "/api/settings" && method == "POST" {
+        let Ok(j) = serde_json::from_slice::<Value>(&body) else {
+            return respond(&mut stream, "400 Bad Request", "application/json; charset=utf-8", br#"{"error":"invalid json"}"#.to_vec());
+        };
+        let v = j.get("closeBehavior").and_then(|x| x.as_str()).unwrap_or("");
+        if !["close", "background", "ask"].contains(&v) {
+            return respond(&mut stream, "400 Bad Request", "application/json; charset=utf-8", br#"{"error":"closeBehavior must be close/background/ask"}"#.to_vec());
+        }
+        let resp = engine.lock().map(|mut e| {
+            e.cfg.close_behavior = v.to_string();
+            e.save_config();
+            json!({"ok": true, "closeBehavior": v}).to_string()
+        }).unwrap_or_else(|_| "{\"error\":\"locked\"}".into());
+        return respond(&mut stream, "200 OK", "application/json; charset=utf-8", resp.into_bytes());
+    }
     if path == "/api/open" && method == "POST" {
         show_main(&app);
         return respond(&mut stream, "200 OK", "text/plain; charset=utf-8", b"ok".to_vec());
@@ -632,6 +657,7 @@ fn main() {
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             show_main(app);
         }))
+        .manage(engine.clone())
         .setup(move |app| {
             let config_dir = app
                 .path()
@@ -666,8 +692,7 @@ fn main() {
             // 托盘：打开窗口 / 退出
             use tauri::menu::{MenuBuilder, MenuItem};
             let open_item = MenuItem::with_id(app, "open", "打开窗口", true, None::<&str>)?;
-            let quit_item = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
-            let menu = MenuBuilder::new(app).item(&open_item).item(&quit_item).build()?;
+            let menu = MenuBuilder::new(app).item(&open_item).build()?;
             let _tray = tauri::tray::TrayIconBuilder::with_id("main-tray")
                 .icon(app.default_window_icon().unwrap().clone())
                 .tooltip("KimiMonitor")
@@ -675,7 +700,6 @@ fn main() {
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, ev| match ev.id().as_ref() {
                     "open" => show_main(app),
-                    "quit" => app.exit(0),
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, ev| {
@@ -692,10 +716,37 @@ fn main() {
             Ok(())
         })
         .on_window_event(|window, event| {
-            // 关闭窗口 = 隐藏到后台（托盘常驻）；托盘「退出」才是真退出
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                api.prevent_close();
-                let _ = window.hide();
+                let behavior = window
+                    .app_handle()
+                    .state::<std::sync::Arc<std::sync::Mutex<Engine>>>()
+                    .lock()
+                    .map(|e| e.cfg.close_behavior.clone())
+                    .unwrap_or_else(|_| "background".into());
+                match behavior.as_str() {
+                    "close" => {} // 直接关闭：不拦截，窗口关闭后应用退出
+                    "ask" => {
+                        api.prevent_close();
+                        let window = window.clone();
+                        std::thread::spawn(move || {
+                            let result = rfd::MessageDialog::new()
+                                .set_title(APP_TITLE)
+                                .set_description("关闭窗口时想要执行什么操作？
+
+「是」= 直接关闭应用（结束后台服务）
+「否」= 最小化到托盘，后台继续运行
+「取消」= 不关闭窗口")
+                                .set_buttons(rfd::MessageButtons::YesNoCancel)
+                                .show();
+                            match result {
+                                rfd::MessageDialogResult::Yes => window.app_handle().exit(0),
+                                rfd::MessageDialogResult::No => { let _ = window.hide(); }
+                                _ => {}
+                            }
+                        });
+                    }
+                    _ => { api.prevent_close(); let _ = window.hide(); } // background：后台运行
+                }
             }
         })
         .run(tauri::generate_context!())
@@ -724,7 +775,7 @@ mod tests {
         fn engine(&self) -> Engine {
             Engine {
                 config_dir: self.0.join("config"),
-                cfg: Config { roots: vec![self.0.join("sessions").to_string_lossy().to_string()], setup_done: true },
+                cfg: Config { roots: vec![self.0.join("sessions").to_string_lossy().to_string()], setup_done: true, close_behavior: "background".into() },
                 ..Engine::default()
             }
         }
