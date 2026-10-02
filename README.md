@@ -73,7 +73,11 @@
 - **后台 / 退出**：同安装版；也可双击「停止监控.bat」结束服务
 - **卸载**：退出后直接删除整个文件夹
 
-### macOS（Kimi-Monitor-macOS.tar.gz）
+### macOS
+
+**Tauri 版（推荐，双架构 .dmg）**：因 macOS 应用必须在 macOS 上构建，仓库用 GitHub Actions 云端产出——推 `v*` 标签或在 Actions 页手动运行「Build desktop apps」即可在 Release 拿到 `KimiMonitor_<版本>_universal.dmg`。应用未做签名/公证，首次打开需右键 → 打开（或 `xattr -cr /Applications/KimiMonitor.app`）。后台/退出行为与 Windows Tauri 版一致（关窗隐藏到后台、托盘退出）。
+
+**Node 版（Kimi-Monitor-macOS.tar.gz，旧）**：
 
 - **启动**：打开「KimiMonitor.app」，自动打开浏览器页面；关闭页面后服务仍在后台
 - **退出**：在「活动监视器」结束 node 进程，或直接双击包内「卸载.command」（同时删除 App 与 `~/Library/Application Support/KimiMonitor`）
