@@ -293,13 +293,13 @@ const modelColor = m => PALETTE[Math.max(0, modelOrder.indexOf(m)) % PALETTE.len
 // ---------- 格式化 ----------
 const p2 = n => String(n).padStart(2, '0');
 function fmt(n) {
-  n = n | 0;
+  n = Math.trunc(n);
   const abs = Math.abs(n);
   if (abs >= 1e8) return (n / 1e8).toFixed(2) + '亿';
   if (abs >= 1e4) return (n / 1e4).toFixed(1) + '万';
   return n.toLocaleString('en-US');
 }
-function fmtFull(n) { return (n | 0).toLocaleString('en-US'); }
+function fmtFull(n) { return Math.trunc(n).toLocaleString('en-US'); }
 function fmtTick(n) { // y 轴标签：按 2 位有效数字取整再去掉小数零（5289.4万→5300万，1322.4万→1300万）
   if (n <= 0) return '0';
   const mag = Math.pow(10, Math.floor(Math.log10(n)) - 1);
@@ -430,18 +430,25 @@ function initHeatmapUi() {
 }
 
 // ---------- 时段 ----------
-function applyPreset(p) {
-  curPreset = p;
+function updatePresetRange(syncInputs = false) {
+  if (curPreset === 'custom') return;
+  const p = curPreset;
   const now = new Date(); const sod = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   if (p === 'today') range = { start: sod.getTime(), end: null };
   else if (p === '24h') range = { start: now.getTime() - 864e5, end: null };
   else if (p === '7d') range = { start: sod.getTime() - 6 * 864e5, end: null };
   else if (p === '30d') range = { start: sod.getTime() - 29 * 864e5, end: null };
   else range = { start: null, end: null };
+  // 仅在选择预设时同步输入框，自动刷新不能覆盖用户正在编辑的自定义日期。
+  if (syncInputs) {
+    $('#from').value = range.start != null ? toLocalInput(new Date(range.start)) : '';
+    $('#to').value = toLocalInput(now);
+  }
+}
+function applyPreset(p) {
+  curPreset = p;
+  updatePresetRange(true);
   document.querySelectorAll('#presets .chip').forEach(c => c.classList.toggle('on', c.dataset.p === p));
-  // 预设与自定义输入框保持同步，避免"看到的和应用的"不一致
-  $('#from').value = range.start != null ? toLocalInput(new Date(range.start)) : '';
-  $('#to').value = toLocalInput(now);
   saveUI();
   render();
 }
@@ -465,6 +472,7 @@ async function loadData() {
   try {
     const r = await fetch('/api/data');
     const j = await r.json();
+    if (!r.ok || j.error) throw new Error(j.error || `HTTP ${r.status}`);
     Object.assign(DATA, j);
     refreshFilterOptions();
     maybeOnboard();
@@ -477,6 +485,7 @@ setInterval(() => { if ($('#auto').checked) loadData(); }, 10000);
 
 // ---------- 渲染 ----------
 function render() {
+  updatePresetRange();
   const { start, end } = range;
   const recsRange = DATA.records.filter(r => (!start || r.t >= start) && (!end || r.t < end));
   const hasFilter = !!(fltModel.size || fltProj.size);

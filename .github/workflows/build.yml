@@ -5,6 +5,9 @@ on:
   push:
     tags: ["v*"]
 
+permissions:
+  contents: read
+
 jobs:
   build:
     strategy:
@@ -28,7 +31,12 @@ jobs:
           targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Install frontend deps
-        run: npm install
+        run: npm ci
+
+      - name: Regression tests
+        run: |
+          npm test
+          cargo test --manifest-path src-tauri/Cargo.toml --locked
 
       - name: Build (tauri)
         run: npx tauri build ${{ matrix.target }}
@@ -38,6 +46,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KimiMonitor-windows
+          if-no-files-found: error
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
 
@@ -46,14 +55,31 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: KimiMonitor-macos
+          if-no-files-found: error
           path: |
             src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
             src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app
 
-      - name: Attach to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: KimiMonitor-*
+          path: release-assets
+          merge-multiple: true
+      - name: Prepare Rust desktop release draft
         uses: softprops/action-gh-release@v2
         with:
+          draft: true
+          name: "${{ github.ref_name }} — Rust/Tauri 桌面版"
+          body_path: RELEASE_NOTES.md
+          fail_on_unmatched_files: true
           files: |
-            src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+            release-assets/**/*.exe
+            release-assets/**/*.dmg

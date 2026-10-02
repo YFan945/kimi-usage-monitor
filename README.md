@@ -1,7 +1,7 @@
 # KimiMonitor — Kimi Code 用量监控
 
 本地桌面应用，监控 [Kimi Code](https://www.kimi.com/)（月之暗面 CLI）的 API 调用次数与 token 消耗。
-零依赖 Node 服务 + 单页前端，支持任意时段筛选、按模型/项目多选筛选、GitHub 风格热力总览、双主题。
+v2.0.0 以 Rust + Tauri 桌面版为正式发行版，提供原生窗口与托盘，支持任意时段筛选、按模型/项目多选筛选、GitHub 风格热力总览、双主题。Node/SEA 产物保留在旧版 Release，仓库仍保留兼容源码与打包脚本。
 
 ## 下载安装（成品包）
 
@@ -9,9 +9,16 @@
 
 | 文件 | 平台 | 用法 |
 |---|---|---|
-| `KimiMonitor_1.3.0_x64-setup.exe` | Windows 10/11 x64 | **Tauri 安装版（推荐）**：原生托盘，体积仅 2.6MB，双击安装（需要 WebView2，Win11 自带） |
-| `KimiMonitor-Setup-1.2.0.exe` | Windows 10/11 x64 | Node/SEA 安装版：免管理员权限安装，无原生托盘（用系统托盘模拟） |
-| `KimiMonitor_1.3.0_universal.dmg` | macOS 11+ 双架构 | **Tauri 版 .dmg**：拖入「应用程序」，首次右键 → 打开（未签名） |
+| [`KimiMonitor_2.0.0_x64-setup.exe`](../../releases/download/v2.0.0/KimiMonitor_2.0.0_x64-setup.exe) | Windows 10/11 x64 | **Rust/Tauri 安装版**：原生托盘，双击安装（需要 WebView2，Win11 自带） |
+| [`KimiMonitor_2.0.0_universal.dmg`](../../releases/download/v2.0.0/KimiMonitor_2.0.0_universal.dmg) | macOS 11+ 双架构 | **Rust/Tauri 版 .dmg**：拖入「应用程序」，首次右键 → 打开（未签名） |
+
+### 旧版 Node/SEA 下载
+
+需要 Node 安装版、单文件版或绿色版时，访问 [v1.2.0 Release](../../releases/tag/v1.2.0)。这些历史资产继续保留，不会重新打包或并入 v2.0.0。
+
+| 文件 | 平台 | 用法 |
+|---|---|---|
+| `KimiMonitor-Setup-1.2.0.exe` | Windows 10/11 x64 | Node/SEA 安装版：免管理员权限安装，使用 PowerShell 托盘 |
 | `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"）；首次运行自动在桌面创建「KimiMonitor」快捷方式 |
 | `KimiMonitor-Windows-Portable.zip` | Windows | 绿色文件夹版，解压后双击 `启动监控.bat` |
 | `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「KimiMonitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
@@ -47,9 +54,9 @@
 
 本应用由「后台服务 + 界面窗口」两部分组成。**关闭应用窗口 ≠ 退出**：窗口关掉后服务仍在后台运行（右下角托盘图标），要彻底退出请用下面的退出方式。
 
-### Tauri 版（KimiMonitor_1.3.0_x64-setup.exe，推荐）
+### Rust/Tauri v2.0.0（当前正式版）
 
-- **启动**：开始菜单/桌面快捷方式「KimiMonitor」，原生窗口 + 原生托盘图标（无控制台、无 Edge 依赖、无固定端口）
+- **启动**：开始菜单/桌面快捷方式「KimiMonitor」，原生窗口 + 原生托盘图标（无控制台、无 Edge 依赖）；内嵌服务仅绑定 `127.0.0.1`，优先使用 `43110`，被占用时自动选择空闲端口
 - **后台**：关闭应用窗口 = 隐藏到后台，托盘常驻；托盘左键或菜单「打开窗口」恢复
 - **退出**：托盘右键 →「退出」，服务与托盘一起彻底关闭
 - **卸载**：设置 → 应用 → KimiMonitor → 卸载，同时清理配置目录（`%APPDATA%\com.yfan945.kimimonitor`）
@@ -76,7 +83,7 @@
 
 ### macOS
 
-**Tauri 版（推荐，双架构 .dmg）**：因 macOS 应用必须在 macOS 上构建，仓库用 GitHub Actions 云端产出——推 `v*` 标签或在 Actions 页手动运行「Build desktop apps」即可在 Release 拿到 `KimiMonitor_<版本>_universal.dmg`。应用未做签名/公证，首次打开需右键 → 打开（或 `xattr -cr /Applications/KimiMonitor.app`）。后台/退出行为与 Windows Tauri 版一致（关窗隐藏到后台、托盘退出）。
+**Tauri 版（推荐，双架构 .dmg）**：因 macOS 应用必须在 macOS 上构建，仓库用 GitHub Actions 云端产出——推 `v*` 标签会构建并附加到 Release；在 Actions 页手动运行「Build desktop apps」时，从该次运行的 artifacts 下载。应用未做签名/公证，首次打开需右键 → 打开（或 `xattr -cr /Applications/KimiMonitor.app`）。后台/退出行为与 Windows Tauri 版一致（关窗隐藏到后台、托盘退出）。
 
 **Node 版（Kimi-Monitor-macOS.tar.gz，旧）**：
 
@@ -130,7 +137,7 @@ ISCC.exe packaging\installer.iss
 
 ### 3. macOS 应用包（.app）
 
-仓库未内置 mac 构建脚本，手工组装（在任意能跑 macOS 的机器上）：
+可在 Windows 上运行 `node build.js --mac` 自动组装 Node 版双架构 `.app` 并输出 `dist/Kimi-Monitor-macOS.tar.gz`。需要网络下载 Node 二进制及 Python；Pillow 用于生成图标。下列步骤用于手工复现，不是 Tauri `.dmg` 的构建方式：
 
 1. 从 [nodejs.org](https://nodejs.org/dist/) 下载 macOS **arm64 与 x64** 两个官方 tarball（v22 LTS），解出各自 `bin/node`，存为 `Resources/bin/node-darwin-arm64`、`Resources/bin/node-darwin-x64`
 2. 把 `server.js` 与 `public/` 拷进 `Resources/app/`
@@ -162,7 +169,24 @@ tar czf dist/Kimi-Monitor-macOS.tar.gz "KimiMonitor.app" 卸载.command
 
 数据来自各会话 `agents/*/wire.jsonl` 的 `usage.record` 事件——每次 LLM 请求（含子 agent）一条，
 字段为 `inputOther` / `output` / `inputCacheRead` / `inputCacheCreation`。只统计 token 数，不代表费用。
-会话的工作目录取自 `state.json` 的 `cwd`，缺失时用 `session_index.jsonl` 的 `workDir` 兜底。
+会话的工作目录取自 `state.json` 的 `cwd`，缺失时用 `session_index.jsonl` 的 `workDir` 兜底；没有 `state.json` 但存在 `agents/` 的会话也会扫描。
+合法 JSONL 中的字段空格不影响解析，损坏行会跳过。重叠扫描目录按会话真实路径去重，同一个会话只计一次。
+“今天 / 24 小时 / 7 天 / 30 天”随页面刷新或重新渲染更新，自定义范围保持固定。
+
+## 开发与回归测试
+
+```bash
+npm test
+cargo test --manifest-path src-tauri/Cargo.toml --locked
+```
+
+`npm test` 使用 Node 内置 `node:test`，测试真实 HTTP 服务与共享前端函数，无需安装运行时依赖。Rust 测试需要桌面构建工具链，验证 Tauri 数据引擎。全部会话样本均为临时目录中的合成数据，不扫描用户的真实会话。
+
+回归覆盖会话索引、重叠目录、缺少元数据、JSONL 空格与损坏行、大数 token、相对时段、异常配置及非法 URL。配置请求需要 `roots` 字符串数组和可选的 `setupDone` 布尔值；Node 返回 `400` 拒绝无效配置，超过 1 MiB 返回 `413`，原配置保留。
+
+`.github/workflows/test.yml` 在 PR 和 main 分支推送时运行回归测试；桌面构建工作流也先运行测试。自动化测试不覆盖窗口、托盘及安装器交互，相关修改仍需手动验证。
+
+Tauri 版本来自 `package.json`、`src-tauri/Cargo.toml` 和 `src-tauri/tauri.conf.json`；Node/SEA 安装器版本独立来自 `packaging/installer.iss`。发布前核对对应产物的版本，`node build.js --release` 会上传并覆盖同名资产。
 
 ## 开源协议
 

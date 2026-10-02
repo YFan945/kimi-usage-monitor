@@ -2,10 +2,10 @@
 
 // KimiMonitor 桌面版（Tauri v2）：
 // Rust 内核完整移植原 server.js 数据引擎（扫描 wire.jsonl / 聚合 usage.record），
-// 内嵌 HTTP 服务（127.0.0.1 随机端口，前端零改动），原生托盘（打开窗口/退出），
-// 关窗 = 隐藏到后台，托盘退出 = 彻底退出。不再依赖端口固定值 / PowerShell / Edge --app。
+// 内嵌 HTTP 服务（127.0.0.1:43110，被占用时回退随机端口），原生托盘（打开窗口/退出），
+// 关窗 = 隐藏到后台，托盘退出 = 彻底退出。不再依赖 PowerShell / Edge --app。
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
@@ -27,6 +27,7 @@ const ICON_512: &[u8] = include_bytes!(concat!(env!("CARGO_MANIFEST_DIR"), "/../
 // ---------- 数据结构 ----------
 #[derive(Clone)]
 struct Rec {
+    s: usize,
     t: i64,
     m: String,
     a: String,
@@ -63,10 +64,21 @@ struct Engine {
     index_cache: HashMap<PathBuf, (i64, HashMap<String, String>)>,
     // 800ms 限流：缓存的 /api/data 响应
     last_scan: Option<(Instant, String)>,
+    default_probe: Option<(bool, Option<Value>)>,
 }
 
 fn now_ms() -> i64 {
     chrono::Utc::now().timestamp_millis()
+}
+
+fn token_count(v: &Value) -> i64 {
+    v.as_i64().filter(|n| *n >= 0 && *n <= 9_007_199_254_740_991).unwrap_or(0)
+}
+
+fn valid_config(body: &Value) -> bool {
+    body.get("roots").and_then(Value::as_array)
+        .map(|roots| roots.iter().all(Value::is_string)).unwrap_or(false)
+        && body.get("setupDone").map(Value::is_boolean).unwrap_or(true)
 }
 
 fn file_mtime(p: &Path) -> Option<i64> {
@@ -198,7 +210,7 @@ impl Engine {
         let Ok(text) = std::fs::read_to_string(file) else { return Vec::new() };
         let mut out = Vec::new();
         for line in text.lines() {
-            if !line.contains("\"type\":\"usage.record\"") {
+            if !line.contains("usage.record") {
                 continue;
             }
             let Ok(ev) = serde_json::from_str::<Value>(line) else { continue };
@@ -207,13 +219,14 @@ impl Engine {
             }
             let Some(u) = ev.get("usage") else { continue };
             out.push(Rec {
+                s: 0, // 扫描会话时设置索引，缓存记录不绑定会话顺序
                 t: ev.get("time").and_then(|v| v.as_i64()).unwrap_or(0),
                 m: ev.get("model").and_then(|v| v.as_str()).unwrap_or("unknown").to_string(),
                 a: ev.get("agentId").and_then(|v| v.as_str()).unwrap_or("main").to_string(),
-                i: u.get("inputOther").and_then(|v| v.as_i64()).unwrap_or(0),
-                o: u.get("output").and_then(|v| v.as_i64()).unwrap_or(0),
-                r: u.get("inputCacheRead").and_then(|v| v.as_i64()).unwrap_or(0),
-                c: u.get("inputCacheCreation").and_then(|v| v.as_i64()).unwrap_or(0),
+                i: token_count(&u["inputOther"]),
+                o: token_count(&u["output"]),
+                r: token_count(&u["inputCacheRead"]),
+                c: token_count(&u["inputCacheCreation"]),
             });
         }
         out
@@ -233,8 +246,13 @@ impl Engine {
     }
 
     // 扫描单个会话目录（内含 state.json 与 agents/）
-    fn scan_session(&mut self, sess_path: &Path, sess_name: &str, index: &HashMap<String, String>, sessions: &mut Vec<Session>, records: &mut Vec<Rec>, seen: &mut HashMap<PathBuf, ()>) {
+    fn scan_session(&mut self, sess_path: &Path, sess_name: &str, index: &HashMap<String, String>, sessions: &mut Vec<Session>, records: &mut Vec<Rec>, seen: &mut HashMap<PathBuf, ()>, seen_sessions: &mut HashSet<PathBuf>) {
+        let Ok(canonical) = std::fs::canonicalize(sess_path) else { return };
+        let key = if cfg!(windows) { PathBuf::from(canonical.to_string_lossy().to_lowercase()) } else { canonical.clone() };
+        if !seen_sessions.insert(key) { return; }
+        let sess_path = canonical.as_path();
         let state = self.read_state(sess_path);
+        let sess_idx = sessions.len();
         sessions.push(Session {
             id: sess_name.to_string(),
             cwd: state.as_ref()
@@ -264,14 +282,14 @@ impl Engine {
                     r
                 }
             };
-            records.extend(recs);
+            records.extend(recs.into_iter().map(|mut r| { r.s = sess_idx; r }));
         }
     }
 
     // 扫描一个数据目录。兼容两种布局：
     //   root\<工作区>\<会话>\...   （.kimi-code\sessions 原生结构）
     //   root\<会话>\...            （直接指向某个 sessions 子目录或备份）
-    fn scan_root(&mut self, root: &Path, sessions: &mut Vec<Session>, records: &mut Vec<Rec>, seen: &mut HashMap<PathBuf, ()>) {
+    fn scan_root(&mut self, root: &Path, sessions: &mut Vec<Session>, records: &mut Vec<Rec>, seen: &mut HashMap<PathBuf, ()>, seen_sessions: &mut HashSet<PathBuf>) {
         let index = self.load_index_for(root);
         let Ok(entries) = std::fs::read_dir(root) else { return };
         for d in entries.flatten() {
@@ -279,29 +297,30 @@ impl Engine {
             if !p1.is_dir() {
                 continue;
             }
-            if p1.join("state.json").exists() {
+            if p1.join("state.json").exists() || p1.join("agents").is_dir() {
                 let name = d.file_name().to_string_lossy().to_string();
-                self.scan_session(&p1, &name, &index, sessions, records, seen);
+                self.scan_session(&p1, &name, &index, sessions, records, seen, seen_sessions);
                 continue;
             }
             let Ok(subs) = std::fs::read_dir(&p1) else { continue };
             for d2 in subs.flatten() {
                 let p2 = d2.path();
-                if !p2.is_dir() || !p2.join("state.json").exists() {
+                if !p2.is_dir() || !(p2.join("state.json").exists() || p2.join("agents").is_dir()) {
                     continue;
                 }
                 let name = d2.file_name().to_string_lossy().to_string();
-                self.scan_session(&p2, &name, &index, sessions, records, seen);
+                self.scan_session(&p2, &name, &index, sessions, records, seen, seen_sessions);
             }
         }
     }
 
     fn scan(&mut self) -> (Vec<Session>, Vec<Rec>) {
         let mut seen: HashMap<PathBuf, ()> = HashMap::new();
+        let mut seen_sessions = HashSet::new();
         let mut sessions = Vec::new();
         let mut records = Vec::new();
         for root in self.cfg.roots.clone() {
-            self.scan_root(Path::new(&root), &mut sessions, &mut records, &mut seen);
+            self.scan_root(Path::new(&root), &mut sessions, &mut records, &mut seen, &mut seen_sessions);
         }
         self.wire_cache.retain(|k, _| seen.contains_key(k));
         (sessions, records)
@@ -311,9 +330,10 @@ impl Engine {
         let mut sessions = Vec::new();
         let mut records = Vec::new();
         let mut seen = HashMap::new();
+        let mut seen_sessions = HashSet::new();
         let ok = Path::new(root).exists();
         if ok {
-            self.scan_root(Path::new(root), &mut sessions, &mut records, &mut seen);
+            self.scan_root(Path::new(root), &mut sessions, &mut records, &mut seen, &mut seen_sessions);
         }
         json!({"path": root, "ok": ok, "sessions": sessions.len(), "records": records.len()})
     }
@@ -331,13 +351,16 @@ impl Engine {
             .collect();
         let records_json: Vec<Value> = records
             .iter()
-            .enumerate()
-            .map(|(s, r)| json!({"s": s, "t": r.t, "m": r.m, "a": r.a, "i": r.i, "o": r.o, "r": r.r, "c": r.c}))
+            .map(|r| json!({"s": r.s, "t": r.t, "m": r.m, "a": r.a, "i": r.i, "o": r.o, "r": r.r, "c": r.c}))
             .collect();
         // 引导期对默认目录做一次探测（与 server.js 一致）
         let default_root = Self::default_root();
-        let ok = Path::new(&default_root).exists();
-        let default_stats = if ok { Some(self.probe_root(&default_root)) } else { None };
+        if self.default_probe.is_none() {
+            let ok = Path::new(&default_root).exists();
+            let stats = if ok && !self.cfg.setup_done { Some(self.probe_root(&default_root)) } else { None };
+            self.default_probe = Some((ok, stats));
+        }
+        let (ok, default_stats) = self.default_probe.as_ref().unwrap();
         let body = json!({
             "generatedAt": now_ms(),
             "roots": self.cfg.roots,
@@ -378,6 +401,7 @@ impl Engine {
         self.state_cache.clear();
         self.index_cache.clear();
         self.last_scan = None;
+        self.default_probe = None;
         json!({"ok": true, "roots": self.cfg.roots, "setupDone": self.cfg.setup_done, "stats": stats}).to_string()
     }
 }
@@ -480,6 +504,9 @@ fn handle_conn(mut stream: TcpStream, engine: std::sync::Arc<std::sync::Mutex<En
     }
     if path == "/api/config" && method == "POST" {
         let j: Value = serde_json::from_slice(&body).unwrap_or(Value::Null);
+        if !valid_config(&j) {
+            return respond(&mut stream, "400 Bad Request", "application/json; charset=utf-8", b"{\"error\":\"invalid config\"}".to_vec());
+        }
         let s = engine.lock().map(|mut e| e.apply_config(&j)).unwrap_or_else(|_| "{\"error\":\"locked\"}".into());
         return respond(&mut stream, "200 OK", "application/json; charset=utf-8", s.into_bytes());
     }
@@ -586,4 +613,105 @@ fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    struct Fixture(PathBuf);
+    impl Fixture {
+        fn new() -> Self {
+            static SEQ: AtomicUsize = AtomicUsize::new(0);
+            let name = format!("kimi-rust-test-{}-{}-{}", std::process::id(), now_ms(), SEQ.fetch_add(1, Ordering::Relaxed));
+            let dir = std::env::temp_dir().join(name);
+            std::fs::create_dir_all(&dir).unwrap();
+            Self(dir)
+        }
+        fn write(&self, relative: &str, content: &str) {
+            let file = self.0.join(relative);
+            std::fs::create_dir_all(file.parent().unwrap()).unwrap();
+            std::fs::write(file, content).unwrap();
+        }
+        fn engine(&self) -> Engine {
+            Engine {
+                config_dir: self.0.join("config"),
+                cfg: Config { roots: vec![self.0.join("sessions").to_string_lossy().to_string()], setup_done: true },
+                ..Engine::default()
+            }
+        }
+    }
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            assert_eq!(self.0.parent(), Some(std::env::temp_dir().as_path()));
+            assert!(self.0.file_name().unwrap().to_string_lossy().starts_with("kimi-rust-test-"));
+            let _ = std::fs::remove_dir_all(&self.0);
+        }
+    }
+    fn event(model: &str, count: i64) -> String {
+        json!({"type":"usage.record", "time":1700000000000i64, "model":model,
+            "usage":{"inputOther":count,"output":5}}).to_string()
+    }
+    fn assert_associations(data: &Value) {
+        assert_eq!(data["sessions"].as_array().unwrap().len(), 2);
+        let records = data["records"].as_array().unwrap();
+        assert_eq!(records.len(), 3);
+        for r in records {
+            let s = r["s"].as_u64().unwrap() as usize;
+            assert_eq!(data["sessions"][s]["cwd"], r["m"]);
+        }
+        assert!(records.iter().any(|r| r["i"] == 3_000_000_000i64));
+    }
+
+    #[test]
+    fn session_indices_survive_cached_scans_and_overlapping_roots() {
+        let f = Fixture::new();
+        f.write("sessions/ws/a/state.json", r#"{"cwd":"project-a"}"#);
+        f.write("sessions/ws/a/agents/main/wire.jsonl", &format!("{}\n{}\n{{broken", event("project-a", 3_000_000_000), event("project-a", 10).replace("\"type\":", "\"type\": ")));
+        // b 没有 state.json，使用索引恢复项目。
+        f.write("sessions/ws/b/agents/main/wire.jsonl", &event("project-b", 20));
+        f.write("sessions/session_index.jsonl", r#"{"sessionId":"b","workDir":"project-b"}"#);
+        let mut engine = f.engine();
+        assert_associations(&serde_json::from_str(&engine.get_data_string()).unwrap());
+        engine.cfg.roots.insert(0, f.0.join("sessions/ws").to_string_lossy().to_string());
+        engine.last_scan = None;
+        assert_associations(&serde_json::from_str(&engine.get_data_string()).unwrap());
+    }
+
+    #[test]
+    fn parser_accepts_whitespace_and_skips_malformed_lines() {
+        let f = Fixture::new();
+        f.write("wire.jsonl", &format!("{}\n{{broken\n{{\"type\":\"other\"}}", event("demo", 3_000_000_000).replace("\"type\":", "\"type\": ")));
+        let records = Engine::parse_wire_file(&f.0.join("wire.jsonl"));
+        assert_eq!(records.len(), 1);
+        assert_eq!(records[0].i, 3_000_000_000);
+        assert_eq!(token_count(&json!(-1)), 0);
+        assert_eq!(token_count(&json!(1.5)), 0);
+        assert_eq!(token_count(&json!("100")), 0);
+        assert_eq!(token_count(&json!(9_007_199_254_740_992i64)), 0);
+    }
+
+    #[test]
+    fn invalid_config_is_rejected() {
+        for body in [Value::Null, json!({}), json!({"roots":"abc"}), json!({"roots":[1]}), json!({"roots":[],"setupDone":"yes"})] {
+            assert!(!valid_config(&body));
+        }
+        assert!(valid_config(&json!({"roots":[],"setupDone":true})));
+        assert!(valid_config(&json!({"roots":["somewhere"]})));
+    }
+
+    #[test]
+    fn default_probe_is_cached_and_invalidated_by_config() {
+        let f = Fixture::new();
+        let mut engine = f.engine();
+        let data: Value = serde_json::from_str(&engine.get_data_string()).unwrap();
+        assert!(data["defaultStats"].is_null()); // 完成引导后不扫描默认目录
+        engine.default_probe = Some((true, Some(json!({"cached":true}))));
+        engine.last_scan = None;
+        let data: Value = serde_json::from_str(&engine.get_data_string()).unwrap();
+        assert_eq!(data["defaultStats"]["cached"], true);
+        engine.apply_config(&json!({"roots":[],"setupDone":true}));
+        assert!(engine.default_probe.is_none());
+    }
 }

@@ -148,7 +148,7 @@ let defaultProbe = null;
 function getDefaultProbe() {
   if (defaultProbe) return defaultProbe;
   const ok = fs.existsSync(DEFAULT_ROOT);
-  defaultProbe = { root: DEFAULT_ROOT, ok, stats: ok ? probeRoot(DEFAULT_ROOT) : null };
+  defaultProbe = { root: DEFAULT_ROOT, ok, stats: ok && !CFG.setupDone ? probeRoot(DEFAULT_ROOT) : null };
   return defaultProbe;
 }
 
@@ -199,7 +199,7 @@ function parseWireFile(file) {
   try { text = fs.readFileSync(file, 'utf8'); } catch { return []; }
   const out = [];
   for (const line of text.split('\n')) {
-    if (!line.includes('"type":"usage.record"')) continue;
+    if (!line.includes('usage.record')) continue;
     try {
       const ev = JSON.parse(line);
       if (ev.type !== 'usage.record' || !ev.usage) continue;
@@ -207,14 +207,18 @@ function parseWireFile(file) {
         t: typeof ev.time === 'number' ? ev.time : 0,
         m: ev.model || 'unknown',
         a: ev.agentId || 'main',
-        i: ev.usage.inputOther | 0,
-        o: ev.usage.output | 0,
-        r: ev.usage.inputCacheRead | 0,
-        c: ev.usage.inputCacheCreation | 0,
+        i: tokenCount(ev.usage.inputOther),
+        o: tokenCount(ev.usage.output),
+        r: tokenCount(ev.usage.inputCacheRead),
+        c: tokenCount(ev.usage.inputCacheCreation),
       });
     } catch { /* 跳过损坏行 */ }
   }
   return out;
+}
+
+function tokenCount(value) {
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0;
 }
 
 function readState(sessDir) {
@@ -231,7 +235,11 @@ function readState(sessDir) {
 }
 
 // 扫描单个会话目录（内含 state.json 与 agents/）
-function scanSession(sessPath, sessName, index, sessions, records, seen) {
+function scanSession(sessPath, sessName, index, sessions, records, seen, seenSessions) {
+  try { sessPath = fs.realpathSync(sessPath); } catch { return; }
+  const key = process.platform === 'win32' ? sessPath.toLowerCase() : sessPath;
+  if (seenSessions.has(key)) return;
+  seenSessions.add(key);
   const { state } = readState(sessPath);
   const sessIdx = sessions.length;
   sessions.push({
@@ -260,25 +268,26 @@ function scanSession(sessPath, sessName, index, sessions, records, seen) {
 // 扫描一个数据目录。兼容两种布局：
 //   root\<工作区>\<会话>\...   （.kimi-code\sessions 原生结构）
 //   root\<会话>\...            （直接指向某个 sessions 子目录或备份）
-function scanRoot(root, sessions, records, seen) {
+function scanRoot(root, sessions, records, seen, seenSessions = new Set()) {
   const index = loadIndexFor(root);
   for (const d of listDir(root)) {
     if (!d.isDirectory()) continue;
     const p1 = path.join(root, d.name);
-    if (fs.existsSync(path.join(p1, 'state.json'))) { scanSession(p1, d.name, index, sessions, records, seen); continue; }
+    if (fs.existsSync(path.join(p1, 'state.json')) || fs.existsSync(path.join(p1, 'agents'))) { scanSession(p1, d.name, index, sessions, records, seen, seenSessions); continue; }
     for (const d2 of listDir(p1)) {
       if (!d2.isDirectory()) continue;
       const p2 = path.join(p1, d2.name);
-      if (fs.existsSync(path.join(p2, 'state.json'))) scanSession(p2, d2.name, index, sessions, records, seen);
+      if (fs.existsSync(path.join(p2, 'state.json')) || fs.existsSync(path.join(p2, 'agents'))) scanSession(p2, d2.name, index, sessions, records, seen, seenSessions);
     }
   }
 }
 
 function scan() {
   const seen = new Set();
+  const seenSessions = new Set();
   const sessions = [];
   const records = [];
-  for (const root of CFG.roots) scanRoot(root, sessions, records, seen);
+  for (const root of CFG.roots) scanRoot(root, sessions, records, seen, seenSessions);
   for (const k of wireCache.keys()) if (!seen.has(k)) wireCache.delete(k);
   return { sessions, records };
 }
@@ -300,13 +309,20 @@ function getData() {
 // ---------- HTTP ----------
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.css': 'text/css; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.webmanifest': 'application/manifest+json' };
 
-function json(res, body) {
-  res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+function json(res, body, status = 200) {
+  res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
   res.end(typeof body === 'string' ? body : JSON.stringify(body));
 }
 
 const server = http.createServer((req, res) => {
-  const url = new URL(req.url, 'http://127.0.0.1');
+  let url, decodedPath;
+  try {
+    url = new URL(req.url, 'http://127.0.0.1');
+    decodedPath = decodeURIComponent(url.pathname);
+  } catch {
+    json(res, { error: '请求路径无效' }, 400);
+    return;
+  }
   if (url.pathname === '/api/data') {
     let body;
     try {
@@ -321,14 +337,32 @@ const server = http.createServer((req, res) => {
   }
   if (url.pathname === '/api/config' && req.method === 'POST') {
     let raw = '';
-    req.on('data', c => { raw += c; });
+    let size = 0, tooLarge = false;
+    req.setEncoding('utf8');
+    req.on('data', c => {
+      size += Buffer.byteLength(c);
+      if (tooLarge) return;
+      if (size > 1024 * 1024) {
+        tooLarge = true;
+        raw = '';
+        json(res, { error: '配置请求过大' }, 413);
+        return;
+      }
+      raw += c;
+    });
     req.on('end', () => {
-      let roots = [], setupDone;
+      if (tooLarge) return;
+      let roots, setupDone;
       try {
         const j = JSON.parse(raw);
-        roots = j.roots || [];
+        if (!j || !Array.isArray(j.roots) || !j.roots.every(p => typeof p === 'string') ||
+            (j.setupDone !== undefined && typeof j.setupDone !== 'boolean')) throw new Error('invalid config');
+        roots = j.roots;
         if (typeof j.setupDone === 'boolean') setupDone = j.setupDone;
-      } catch { }
+      } catch {
+        json(res, { error: '配置需要 roots 字符串数组及可选的 setupDone 布尔值' }, 400);
+        return;
+      }
       roots = [...new Set(roots.map(p => path.normalize(String(p).trim())).filter(Boolean))];
       const stats = roots.map(probeRoot);
       CFG.roots = roots.filter((_, i) => stats[i].ok);
@@ -354,8 +388,7 @@ const server = http.createServer((req, res) => {
     setTimeout(() => process.exit(0), 150);
     return;
   }
-  let p = url.pathname === '/' ? '/index.html' : url.pathname;
-  p = decodeURIComponent(p);
+  let p = decodedPath === '/' ? '/index.html' : decodedPath;
   p = path.normalize(p).replace(/^([/\\]|\.\.[/\\])+/g, '');
   if (isSEA && ASSETS[p]) {
     res.writeHead(200, { 'Content-Type': MIME[path.extname(p)] || 'application/octet-stream' });
