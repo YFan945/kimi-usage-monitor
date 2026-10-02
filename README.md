@@ -77,8 +77,8 @@ Windows Node 版退出时会尝试关闭标题匹配的应用窗口，普通浏�
 
 | 运行方式 | `config.json` 位置 |
 |---|---|
-| Windows Rust/Tauri | `%APPDATA%\com.yfan945.kimimonitor\config.json` |
-| macOS Rust/Tauri | `~/Library/Application Support/com.yfan945.kimimonitor/config.json` |
+| Windows Rust/Tauri | `%APPDATA%\kimimonitor\config.json` |
+| macOS Rust/Tauri | `~/Library/Application Support/kimimonitor/config.json` |
 | Windows Node/SEA 安装版 | `%LOCALAPPDATA%\Programs\KimiMonitor\config.json`（默认安装路径） |
 | Windows Node 单文件版 | exe 所在目录 |
 | Windows Node 源码版、绿色版 | `server.js` 所在目录 |
