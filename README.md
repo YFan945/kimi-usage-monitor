@@ -11,6 +11,7 @@
 |---|---|---|
 | `KimiMonitor_1.3.0_x64-setup.exe` | Windows 10/11 x64 | **Tauri 安装版（推荐）**：原生托盘，体积仅 2.6MB，双击安装（需要 WebView2，Win11 自带） |
 | `KimiMonitor-Setup-1.2.0.exe` | Windows 10/11 x64 | Node/SEA 安装版：免管理员权限安装，无原生托盘（用系统托盘模拟） |
+| `KimiMonitor_1.3.0_universal.dmg` | macOS 11+ 双架构 | **Tauri 版 .dmg**：拖入「应用程序」，首次右键 → 打开（未签名） |
 | `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"）；首次运行自动在桌面创建「KimiMonitor」快捷方式 |
 | `KimiMonitor-Windows-Portable.zip` | Windows | 绿色文件夹版，解压后双击 `启动监控.bat` |
 | `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「KimiMonitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
