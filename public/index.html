@@ -161,13 +161,13 @@ footer code{color:var(--text)}
   </header>
 
   <div class="card" id="dirPanel" style="display:none">
-    <h2>扫描目录<span style="font-weight:400">可添加多个 sessions 或工作区目录；会话日志位于各会话的 agents 子目录，重叠路径不会重复计数</span></h2>
+    <h2>扫描目录<span style="font-weight:400">添加 Kimi Code 会话目录，支持多个目录</span></h2>
     <div id="dirList"></div>
     <div class="range-row" style="margin-top:4px">
       <input id="dirInput" style="flex:1;min-width:280px;background:var(--panel2);border:1px solid var(--border);border-radius:6px;color:var(--text);padding:5px 10px;font-size:13px" placeholder="填写本机会话目录，如 C:\Users\用户名\.kimi-code\sessions 或 /Users/用户名/.kimi-code/sessions">
       <button class="primary" id="dirAdd">添加</button>
     </div>
-    <div class="range-info">修改后重新读取数据。设置保存在当前版本的本地配置中；移除路径不会删除会话文件。更换电脑后，请重新确认本机数据目录。</div>
+    <div class="range-info">修改后自动更新数据；移除目录不会删除原文件。</div>
   </div>
 
   <div class="card">
@@ -522,7 +522,7 @@ function render() {
   drawCharts(recs, sum.n);
   drawBreakdowns(recsRange);
   drawSessions(recs);
-  $('#footer').innerHTML = `扫描目录：${((DATA.roots && DATA.roots.length) ? DATA.roots.map(r => '<code>' + esc(r) + '</code>').join('、') : '尚未配置')}。调用次数按 usage.record 用量事件计数，包含子 agent；token 合计不代表费用、账户余额或剩余额度。`;
+  $('#footer').innerHTML = '统计来自本地会话记录，仅供用量参考，不代表费用或剩余额度。';
 }
 
 // ---------- 数据目录管理 ----------
