@@ -9,7 +9,8 @@
 
 | 文件 | 平台 | 用法 |
 |---|---|---|
-| `KimiMonitor-Setup-1.2.0.exe` | Windows 10/11 x64 | **安装版（推荐）**：双击安装 → 开始菜单/桌面快捷方式；卸载走"设置 → 应用 → 已安装的应用" |
+| `KimiMonitor_1.3.0_x64-setup.exe` | Windows 10/11 x64 | **Tauri 安装版（推荐）**：原生托盘，体积仅 2.6MB，双击安装（需要 WebView2，Win11 自带） |
+| `KimiMonitor-Setup-1.2.0.exe` | Windows 10/11 x64 | Node/SEA 安装版：免管理员权限安装，无原生托盘（用系统托盘模拟） |
 | `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"）；首次运行自动在桌面创建「KimiMonitor」快捷方式 |
 | `KimiMonitor-Windows-Portable.zip` | Windows | 绿色文件夹版，解压后双击 `启动监控.bat` |
 | `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「KimiMonitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
@@ -45,7 +46,15 @@
 
 本应用由「后台服务 + 界面窗口」两部分组成。**关闭应用窗口 ≠ 退出**：窗口关掉后服务仍在后台运行（右下角托盘图标），要彻底退出请用下面的退出方式。
 
-### 安装版（KimiMonitor-Setup-x.x.x.exe）
+### Tauri 版（KimiMonitor_1.3.0_x64-setup.exe，推荐）
+
+- **启动**：开始菜单/桌面快捷方式「KimiMonitor」，原生窗口 + 原生托盘图标（无控制台、无 Edge 依赖、无固定端口）
+- **后台**：关闭应用窗口 = 隐藏到后台，托盘常驻；托盘左键或菜单「打开窗口」恢复
+- **退出**：托盘右键 →「退出」，服务与托盘一起彻底关闭
+- **卸载**：设置 → 应用 → KimiMonitor → 卸载，同时清理配置目录（`%APPDATA%\com.yfan945.kimimonitor`）
+- **构建**：需要 Rust + MSVC 构建工具，`npm install` 后 `npm run desktop`，产物在 `src-tauri/target/release/bundle/nsis/`
+
+### Node/SEA 安装版（KimiMonitor-Setup-x.x.x.exe）
 
 - **启动**：开始菜单或桌面快捷方式「KimiMonitor」（安装时可选择是否创建），没有控制台黑窗
 - **后台**：关闭应用窗口后右下角托盘图标仍在，左键或右键菜单可「打开窗口」或「退出」
