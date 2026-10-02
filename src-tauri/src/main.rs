@@ -246,12 +246,54 @@ impl Engine {
     }
 
     // 扫描含 agents/ 的会话；state.json 可缺省，项目目录由可找到的索引兜底
+    // 会话标题兜底：从该 wire.jsonl 的首条 prompt.accepted / turn.prompt 提取用户提问
+    fn wire_title(&self, file: &Path) -> Option<String> {
+        let text = std::fs::read_to_string(file).ok()?;
+        for line in text.lines() {
+            if !line.contains("\"prompt.accepted\"") && !line.contains("\"turn.prompt\"") {
+                continue;
+            }
+            let Ok(ev) = serde_json::from_str::<Value>(line) else { continue };
+            let ev_type = ev.get("type").and_then(|v| v.as_str()).unwrap_or("");
+            if ev_type != "prompt.accepted" && ev_type != "turn.prompt" {
+                continue;
+            }
+            let content = ev.get("content").or_else(|| ev.get("input")).and_then(|v| v.as_array());
+            for item in content.into_iter().flatten() {
+                if item.get("type").and_then(|v| v.as_str()) != Some("text") {
+                    continue;
+                }
+                if let Some(text) = item.get("text").and_then(|v| v.as_str()) {
+                    let cleaned: String = text.split_whitespace().collect::<Vec<_>>().join(" ");
+                    let cleaned = cleaned.trim();
+                    if cleaned.is_empty() {
+                        continue;
+                    }
+                    let mut out = cleaned.to_string();
+                    if out.len() > 360 {
+                        let mut end = 360;
+                        while end > 0 && !out.is_char_boundary(end) {
+                            end -= 1;
+                        }
+                        out.truncate(end);
+                    }
+                    return Some(format!("首条提问：{out}"));
+                }
+            }
+        }
+        None
+    }
     fn scan_session(&mut self, sess_path: &Path, sess_name: &str, index: &HashMap<String, String>, sessions: &mut Vec<Session>, records: &mut Vec<Rec>, seen: &mut HashMap<PathBuf, ()>, seen_sessions: &mut HashSet<PathBuf>) {
         let Ok(canonical) = std::fs::canonicalize(sess_path) else { return };
         let key = if cfg!(windows) { PathBuf::from(canonical.to_string_lossy().to_lowercase()) } else { canonical.clone() };
         if !seen_sessions.insert(key) { return; }
         let sess_path = canonical.as_path();
         let state = self.read_state(sess_path);
+        // 会话标题兜底：state.json 缺失或为默认 "New Session" 时，取首个 agent 的首条用户提问
+        let state_title = state.as_ref().and_then(|s| s.get("title").and_then(|v| v.as_str()).map(String::from)).unwrap_or_default();
+        let need_wire_title = state_title.is_empty() || state_title == "New Session";
+        let mut title_main: Option<String> = None;
+        let mut title_other: Option<String> = None;
         let sess_idx = sessions.len();
         sessions.push(Session {
             id: sess_name.to_string(),
@@ -259,7 +301,7 @@ impl Engine {
                 .and_then(|s| s.get("cwd").and_then(|v| v.as_str()).map(String::from))
                 .or_else(|| index.get(sess_name).cloned())
                 .unwrap_or_default(),
-            title: state.as_ref().and_then(|s| s.get("title").and_then(|v| v.as_str()).map(String::from)).unwrap_or_default(),
+            title: state_title.clone(),
             created_at: state.as_ref().map(|s| to_epoch(s.get("createdAt").unwrap_or(&Value::Null))).unwrap_or(0),
             updated_at: state.as_ref().map(|s| to_epoch(s.get("updatedAt").unwrap_or(&Value::Null))).unwrap_or(0),
         });
@@ -273,6 +315,15 @@ impl Engine {
             let Some(mtime) = file_mtime(&wire) else { continue };
             let size = std::fs::metadata(&wire).map(|m| m.len()).unwrap_or(0);
             seen.insert(wire.clone(), ());
+            if need_wire_title {
+                // 标题兜底：优先 main agent 的首条提问，其次其他 agent 目录
+                let is_main = ag.file_name().to_string_lossy() == "main";
+                if is_main && title_main.is_none() {
+                    title_main = self.wire_title(&wire);
+                } else if !is_main && title_other.is_none() {
+                    title_other = self.wire_title(&wire);
+                }
+            }
             let cached = self.wire_cache.get(&wire).map(|(m, s, recs)| (*m == mtime && *s == size).then(|| recs.clone())).flatten();
             let recs = match cached {
                 Some(r) => r,
@@ -283,6 +334,12 @@ impl Engine {
                 }
             };
             records.extend(recs.into_iter().map(|mut r| { r.s = sess_idx; r }));
+        }
+        if need_wire_title {
+            let fallback = title_main.clone().or_else(|| title_other.clone()).unwrap_or_default();
+            if !fallback.is_empty() {
+                sessions[sess_idx].title = fallback;
+            }
         }
     }
 

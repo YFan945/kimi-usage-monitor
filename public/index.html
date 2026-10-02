@@ -64,10 +64,10 @@ select{background:var(--panel2);border:1px solid var(--border);border-radius:6px
 .bar>div{width:100%}
 .bar:hover{outline:1px solid var(--bar-hover)}
 .seg-out{background:var(--c-out)}.seg-in{background:var(--c-in)}.seg-cc{background:var(--c-cc)}.seg-cr{background:var(--c-cr)}
-.trend-area{display:flex;align-items:stretch}
-.y-axis{width:56px;flex:0 0 auto;position:relative;height:248px}
+.trend-area{--plot-height:240px;display:flex;align-items:stretch}
+.y-axis{width:56px;flex:0 0 auto;position:relative;height:calc(var(--plot-height) + 8px)}
 .y-axis span{position:absolute;right:10px;transform:translateY(50%);line-height:1;font-size:10px;color:var(--muted);white-space:nowrap}
-.bars{display:flex;align-items:flex-end;gap:3px;height:240px;padding-top:8px;background:repeating-linear-gradient(to top,var(--grid,rgba(128,128,128,.18)) 0,var(--grid,rgba(128,128,128,.18)) 1px,transparent 1px,transparent calc(240px/4))}
+.bars{display:flex;align-items:flex-end;gap:3px;height:var(--plot-height);padding-top:8px;background:repeating-linear-gradient(to top,var(--grid,rgba(128,128,128,.18)) 0,var(--grid,rgba(128,128,128,.18)) 1px,transparent 1px,transparent calc(var(--plot-height)/4))}
 .xlabels{position:relative;height:16px;margin-top:6px}
 .xlabels span{position:absolute;top:0;line-height:16px;color:var(--muted);font-size:10px;white-space:nowrap}
 .chart-inner.sparse .bars{justify-content:center}
@@ -286,9 +286,23 @@ let range = { start: null, end: null };   // null/null = 全部
 let curPreset = 'all';
 let fltModel = new Set(), fltProj = new Set();  // 模型/项目多选筛选（空集 = 不筛）
 let barMode = 'type';                     // 趋势图着色：type=按类型 model=按模型
-let modelOrder = [];                      // 全量按用量降序的模型列表（保证配色稳定）
+let modelOrder = [];                      // 模型图例/堆叠顺序（跟随当前时段的用量降序）
 const PALETTE = ['#58a6ff', '#3fb950', '#f0883e', '#a371f7', '#39c5cf', '#f778ba', '#d29922', '#8b949e'];
-const modelColor = m => PALETTE[Math.max(0, modelOrder.indexOf(m)) % PALETTE.length];
+// 配色持久化：模型/项目按首次出现顺序分配固定槽位，其他模型的增删不会导致串色
+let colorIds = [];
+try { const saved = JSON.parse(localStorage.getItem('kimi-color-ids') || '[]'); if (Array.isArray(saved)) colorIds = [...new Set(saved.filter(x => typeof x === 'string'))]; } catch {}
+function categoryColor(kind, key) {
+  const id = kind + ':' + key;
+  let index = colorIds.indexOf(id);
+  if (index < 0) {
+    colorIds.push(id);
+    index = colorIds.length - 1;
+    try { localStorage.setItem('kimi-color-ids', JSON.stringify(colorIds)); } catch {}
+  }
+  index = colorIds.slice(0, index + 1).filter(x => x.startsWith(kind + ':')).length - 1;
+  return PALETTE[index % PALETTE.length];
+}
+const modelColor = m => categoryColor('model', m);
 
 // ---------- 格式化 ----------
 const p2 = n => String(n).padStart(2, '0');
@@ -353,8 +367,11 @@ function saveUI() {
 // ---------- 模型/项目多选筛选 ----------
 function panelIdOf(which) { return which === 'model' ? '#msModelPanel' : '#msProjPanel'; }
 function refreshFilterOptions() {
+  // 模型/项目列表跟随当前时段：时段内没有使用过的不再出现
+  const inRange = r => (!range.start || r.t >= range.start) && (!range.end || r.t < range.end);
   const models = new Map(), projs = new Map();
   for (const r of DATA.records) {
+    if (!inRange(r)) continue;
     models.set(r.m, (models.get(r.m) || 0) + 1);
     const cwd = (DATA.sessions[r.s] && DATA.sessions[r.s].cwd) || '(未知)';
     projs.set(cwd, (projs.get(cwd) || 0) + 1);

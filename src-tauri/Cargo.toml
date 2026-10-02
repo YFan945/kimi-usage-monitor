@@ -1,6 +1,6 @@
 [package]
 name = "kimimonitor"
-version = "2.0.1"
+version = "2.0.2"
 description = "KimiMonitor Rust/Tauri 桌面版：读取本机会话日志，统计 Kimi Code 调用与 token 用量"
 edition = "2021"
 

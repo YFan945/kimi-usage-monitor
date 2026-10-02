@@ -236,17 +236,39 @@ function readState(sessDir) {
 }
 
 // 扫描会话目录（含 agents/，state.json 可缺省，项目目录可由索引兜底）
+// 会话标题兜底：从会话首个 wire.jsonl 的首条 prompt.accepted / turn.prompt 提取用户提问
+function wireTitleFromFile(file) {
+  let text;
+  try { text = fs.readFileSync(file, 'utf8'); } catch { return ''; }
+  for (const line of text.split('\n')) {
+    if (!line.includes('"prompt.accepted"') && !line.includes('"turn.prompt"')) continue;
+    let e; try { e = JSON.parse(line); } catch { continue; }
+    if (e.type !== 'prompt.accepted' && e.type !== 'turn.prompt') continue;
+    const c = e.content || e.input;
+    let piece = '';
+    if (Array.isArray(c)) piece = (c.find(x => x && x.type === 'text') || {}).text || '';
+    else if (typeof c === 'string') piece = c;
+    if (typeof piece === 'string' && piece.trim()) {
+      return '首条提问：' + piece.replace(/\s+/g, ' ').trim().slice(0, 120);
+    }
+  }
+  return '';
+}
+
 function scanSession(sessPath, sessName, index, sessions, records, seen, seenSessions) {
   try { sessPath = fs.realpathSync(sessPath); } catch { return; }
   const key = process.platform === 'win32' ? sessPath.toLowerCase() : sessPath;
   if (seenSessions.has(key)) return;
   seenSessions.add(key);
   const { state } = readState(sessPath);
+  const stateTitle = (state && state.title) || '';
+  const needWireTitle = !stateTitle || stateTitle === 'New Session';
+  let wireTitleMain = '', wireTitleOther = '';
   const sessIdx = sessions.length;
   sessions.push({
     id: sessName,
     cwd: (state && state.cwd) || index.get(sessName) || '',
-    title: (state && state.title) || '',
+    title: stateTitle,
     createdAt: toEpoch(state && state.createdAt),
     updatedAt: toEpoch(state && state.updatedAt),
   });
@@ -257,12 +279,21 @@ function scanSession(sessPath, sessName, index, sessions, records, seen, seenSes
     let st;
     try { st = fs.statSync(wire); } catch { continue; }
     seen.add(wire);
+    if (needWireTitle) {
+      // 标题兜底：优先 main agent 的首条提问，其次其他 agent 目录
+      const t = wireTitleFromFile(wire);
+      if (t) { if (ag.name === 'main') { if (!wireTitleMain) wireTitleMain = t; } else if (!wireTitleOther) wireTitleOther = t; }
+    }
     let entry = wireCache.get(wire);
     if (!entry || entry.mtimeMs !== st.mtimeMs || entry.size !== st.size) {
       entry = { mtimeMs: st.mtimeMs, size: st.size, records: parseWireFile(wire) };
       wireCache.set(wire, entry);
     }
     for (const r of entry.records) records.push(Object.assign({ s: sessIdx }, r));
+  }
+  if (needWireTitle) {
+    const fallback = wireTitleMain || wireTitleOther;
+    if (fallback) sessions[sessIdx].title = fallback;
   }
 }
 
