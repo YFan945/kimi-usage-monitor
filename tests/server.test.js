@@ -31,6 +31,8 @@ before(async () => {
   fixture = fs.mkdtempSync(path.join(os.tmpdir(), 'kimi-monitor-test-'));
   root = path.join(fixture, 'sessions');
   fs.copyFileSync(path.join(__dirname, '..', 'server.js'), path.join(fixture, 'server.js'));
+  const seaExecutable = process.env.KIMI_MONITOR_TEST_EXE ? path.join(fixture, 'KimiMonitor.exe') : null;
+  if (seaExecutable) fs.copyFileSync(process.env.KIMI_MONITOR_TEST_EXE, seaExecutable);
   fs.writeFileSync(path.join(fixture, 'config.json'), JSON.stringify({ roots: [], setupDone: true }));
   makeSession('a', { cwd: 'project-a', title: 'A' }, [event(3000000000), event(10).replace('"type":', '"type": '), '{broken']);
   makeSession('b', null, [event(20)]);
@@ -41,7 +43,8 @@ before(async () => {
   const port = reservation.address().port;
   await new Promise(resolve => reservation.close(resolve));
   base = `http://127.0.0.1:${port}`;
-  child = spawn(process.execPath, [path.join(fixture, 'server.js'), '--port', String(port)], {
+  child = spawn(seaExecutable || process.execPath,
+    [...(seaExecutable ? [] : [path.join(fixture, 'server.js')]), '--port', String(port)], {
     cwd: fixture, stdio: ['ignore', 'pipe', 'pipe'],
     env: { ...process.env, HOME: fixture, USERPROFILE: fixture, KIMI_NO_TRAY: '1', KIMI_NO_OPEN: '1', KIMI_NO_SHORTCUT: '1' },
   });

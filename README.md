@@ -1,7 +1,7 @@
 # KimiMonitor — Kimi Code 用量监控
 
 本地桌面应用，监控 [Kimi Code](https://www.kimi.com/)（月之暗面 CLI）的 API 调用次数与 token 消耗。
-v2.0.0 以 Rust + Tauri 桌面版为正式发行版，提供原生窗口与托盘，支持任意时段筛选、按模型/项目多选筛选、GitHub 风格热力总览、双主题。Node/SEA 产物保留在旧版 Release，仓库仍保留兼容源码与打包脚本。
+v2.0.0 以 Rust + Tauri 桌面版为正式发行版，提供原生窗口与托盘，支持任意时段筛选、按模型/项目多选筛选、GitHub 风格热力总览、双主题。Node/SEA 作为独立的 v1.x 维护线，最新补丁为 v1.2.1，仓库保留兼容源码与打包脚本。
 
 ## 下载安装（成品包）
 
@@ -14,11 +14,11 @@ v2.0.0 以 Rust + Tauri 桌面版为正式发行版，提供原生窗口与托�
 
 ### 旧版 Node/SEA 下载
 
-需要 Node 安装版、单文件版或绿色版时，访问 [v1.2.0 Release](../../releases/tag/v1.2.0)。这些历史资产继续保留，不会重新打包或并入 v2.0.0。
+需要 Node 安装版、单文件版或绿色版时，访问 [v1.2.1 补丁 Release](../../releases/tag/v1.2.1)。此补丁包含统计溢出、重叠目录重复计数、JSONL 漏读、缺少会话元数据、异常请求和相对时间刷新修复。[v1.2.0 历史资产](../../releases/tag/v1.2.0)继续保留；Rust v2.0.0 仍为 Latest。
 
 | 文件 | 平台 | 用法 |
 |---|---|---|
-| `KimiMonitor-Setup-1.2.0.exe` | Windows 10/11 x64 | Node/SEA 安装版：免管理员权限安装，使用 PowerShell 托盘 |
+| `KimiMonitor-Setup-1.2.1.exe` | Windows 10/11 x64 | Node/SEA 安装版：免管理员权限安装，使用 PowerShell 托盘 |
 | `KimiMonitor-Windows-x64.exe` | Windows | 便携单文件版，免安装，双击即用（SmartScreen 提示选"仍要运行"）；首次运行自动在桌面创建「KimiMonitor」快捷方式 |
 | `KimiMonitor-Windows-Portable.zip` | Windows | 绿色文件夹版，解压后双击 `启动监控.bat` |
 | `Kimi-Monitor-macOS.tar.gz` | macOS 11+ 双架构 | 解压 → 「KimiMonitor.app」拖入"应用程序"（首次需右键 → 打开）；卸载双击包内「卸载.command」 |
@@ -133,7 +133,7 @@ grep -abo NODE_SEA_FUSE "C:\Program Files\nodejs\node.exe"
 ISCC.exe packaging\installer.iss
 ```
 
-产物 `dist\KimiMonitor-Setup-1.2.0.exe`：免管理员权限安装到 `%LOCALAPPDATA%\Programs\KimiMonitor`，安装时可勾选是否创建开始菜单 / 桌面快捷方式（默认都创建），带"应用和功能"卸载项（卸载时会强制结束运行中的进程并清理配置文件）。版本号在 `packaging\installer.iss` 顶部 `#define` 处修改。
+产物 `dist\KimiMonitor-Setup-1.2.1.exe`：免管理员权限安装到 `%LOCALAPPDATA%\Programs\KimiMonitor`，安装时可勾选是否创建开始菜单 / 桌面快捷方式（默认都创建），带“应用和功能”卸载项（卸载器询问是否删除配置文件）。版本号在 `packaging\installer.iss` 顶部 `#define` 处修改。
 
 ### 3. macOS 应用包（.app）
 
@@ -186,7 +186,7 @@ cargo test --manifest-path src-tauri/Cargo.toml --locked
 
 `.github/workflows/test.yml` 在 PR 和 main 分支推送时运行回归测试；桌面构建工作流也先运行测试。自动化测试不覆盖窗口、托盘及安装器交互，相关修改仍需手动验证。
 
-Tauri 版本来自 `package.json`、`src-tauri/Cargo.toml` 和 `src-tauri/tauri.conf.json`；Node/SEA 安装器版本独立来自 `packaging/installer.iss`。发布前核对对应产物的版本，`node build.js --release` 会上传并覆盖同名资产。
+Tauri 版本来自 `package.json`、`src-tauri/Cargo.toml` 和 `src-tauri/tauri.conf.json`；Node/SEA 安装器版本独立来自 `packaging/installer.iss`。`v1.*` 标签不触发 Rust 桌面构建。发布前核对对应产物的版本，`node build.js --release` 会上传并覆盖同名资产，新建 Node Release 时不将其设为 Latest。
 
 ## 开源协议
 

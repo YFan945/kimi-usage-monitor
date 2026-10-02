@@ -3,7 +3,7 @@ name: Build desktop apps
 on:
   workflow_dispatch:
   push:
-    tags: ["v*"]
+    tags: ["v*", "!v1.*"] # v1.x 为 Node/SEA 维护线，不触发 Rust 桌面发布
 
 permissions:
   contents: read

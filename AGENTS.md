@@ -29,6 +29,8 @@
 
 功能修改应手动验证首次引导、目录配置、筛选、主题、空数据与刷新；桌面修改还需验证关窗隐藏、托盘恢复和退出。扫描或聚合修改须核对 Node 与 Rust 两套实现的输出，保持 `usage.record` 字段口径一致。新增测试建议使用 `*.test.js` 或 Rust `#[test]`，采用合成会话数据。
 
+Windows SEA 打包后可设置 `$env:KIMI_MONITOR_TEST_EXE = (Resolve-Path dist/KimiMonitor.exe).Path`，运行 `node --test tests/server.test.js`，再用 `Remove-Item Env:KIMI_MONITOR_TEST_EXE` 清理变量。测试会将 exe 复制到临时目录，直接验证二进制的统计和异常请求。
+
 ## 提交与 Pull Request
 
 Git 历史多用中文描述具体改动，偶有 `v1.3.0：…` 版本前缀，没有统一 Conventional Commits 规则。提交应聚焦单一目的，例如 `修复：空时段趋势图显示`。

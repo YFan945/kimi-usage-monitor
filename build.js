@@ -260,7 +260,7 @@ print("tared")`;
     fs.writeFileSync(notesFile, notes);
     const exists = spawnSync('gh', ['release', 'view', tag, '--repo', REPO], { stdio: 'ignore', shell: true }).status === 0;
     if (exists) run('gh', ['release', 'upload', tag, ...assets, '--clobber', '--repo', REPO], { shell: true });
-    else run('gh', ['release', 'create', tag, ...assets, '--repo', REPO, '--title', tag, '--notes-file', notesFile], { shell: true });
+    else run('gh', ['release', 'create', tag, ...assets, '--repo', REPO, '--title', tag, '--notes-file', notesFile, '--latest=false'], { shell: true });
     ok(`Release ${tag} 已更新：https://github.com/YFan945/kimi-usage-monitor/releases/tag/${tag}`);
   }
 
