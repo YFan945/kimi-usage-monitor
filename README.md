@@ -7,9 +7,9 @@ KimiMonitor 读取本机 [Kimi Code](https://www.kimi.com/) 会话日志，统�
 | 发行线 | 当前版本 | 运行方式 |
 |---|---|---|
 | **Rust/Tauri 桌面版** | **v2.1.1，Latest** | 原生窗口和托盘，Windows 安装包、macOS 双架构 DMG |
-| **Node/SEA 维护版** | **v1.2.5** | Windows 安装版、单文件版、绿色版，以及 macOS Node 应用包 |
+| **Node/SEA 维护版** | **v1.2.6** | Windows 安装版、单文件版、绿色版，以及 macOS Node 应用包 |
 
-Node/SEA v1.2.5 在 v1.2.1 的统计溢出、重复扫描、JSONL 漏读、缺少会话元数据、异常请求和相对时间刷新等修复之上，新增 PWA manifest（Edge/Chrome 可一键安装为独立应用）并微调界面。历史版本继续保留在 [Releases](https://github.com/YFan945/kimi-usage-monitor/releases)，维护版不会取代 Rust 版的 Latest 标记。
+Node/SEA v1.2.6 在 v1.2.1 的统计溢出、重复扫描、JSONL 漏读、缺少会话元数据、异常请求和相对时间刷新等修复之上，新增 PWA manifest（Edge/Chrome 可一键安装为独立应用）并微调界面。历史版本继续保留在 [Releases](https://github.com/YFan945/kimi-usage-monitor/releases)，维护版不会取代 Rust 版的 Latest 标记。
 
 ## 下载与选择版本
 
@@ -26,22 +26,22 @@ macOS 包未签名或公证，首次打开可能受到系统拦截。请确认�
 
 ### Node/SEA 维护版
 
-从 [v1.2.5 Release](https://github.com/YFan945/kimi-usage-monitor/releases/tag/v1.2.5) 下载：
+从 [v1.2.6 Release](https://github.com/YFan945/kimi-usage-monitor/releases/tag/v1.2.5) 下载：
 
 | 文件 | 平台 | 运行方式 |
 |---|---|---|
-| [KimiMonitor-Setup-1.2.5.exe](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.5/KimiMonitor-Setup-1.2.5.exe) | Windows x64 | 当前用户安装，默认位置为 `%LOCALAPPDATA%\Programs\KimiMonitor` |
-| [KimiMonitor-Windows-x64.exe](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.5/KimiMonitor-Windows-x64.exe) | Windows x64 | 直接运行；首次启动会尝试创建桌面快捷方式 |
-| [KimiMonitor-Windows-Portable.zip](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.5/KimiMonitor-Windows-Portable.zip) | Windows x64 | 解压后运行 `启动监控.bat`；包内已含 `runtime/node.exe` |
-| [Kimi-Monitor-macOS.tar.gz](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.5/Kimi-Monitor-macOS.tar.gz) | macOS 11+，Apple Silicon / Intel | 解压后将 KimiMonitor.app 放入“应用程序”；包内含两种架构的 Node runtime |
-| [SHA256SUMS.txt](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.5/SHA256SUMS.txt) | 所有 Node 发行包 | 用于核对四个安装包或压缩包的 SHA-256 |
+| [KimiMonitor-Setup-1.2.6.exe](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.6/KimiMonitor-Setup-1.2.6.exe) | Windows x64 | 当前用户安装，默认位置为 `%LOCALAPPDATA%\Programs\KimiMonitor` |
+| [KimiMonitor-Windows-x64.exe](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.6/KimiMonitor-Windows-x64.exe) | Windows x64 | 直接运行；首次启动会尝试创建桌面快捷方式 |
+| [KimiMonitor-Windows-Portable.zip](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.6/KimiMonitor-Windows-Portable.zip) | Windows x64 | 解压后运行 `启动监控.bat`；包内已含 `runtime/node.exe` |
+| [Kimi-Monitor-macOS.tar.gz](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.6/Kimi-Monitor-macOS.tar.gz) | macOS 11+，Apple Silicon / Intel | 解压后将 KimiMonitor.app 放入“应用程序”；包内含两种架构的 Node runtime |
+| [SHA256SUMS.txt](https://github.com/YFan945/kimi-usage-monitor/releases/download/v1.2.6/SHA256SUMS.txt) | 所有 Node 发行包 | 用于核对四个安装包或压缩包的 SHA-256 |
 
 这些成品包均自带运行所需的 Node，无需另行安装。Windows 版优先以 Edge 应用窗口打开界面，没有 Edge 时使用默认浏览器。macOS Node 版打开浏览器界面，没有原生托盘。
 
 Windows 可用 PowerShell 核对下载文件：
 
 ```powershell
-Get-FileHash .\KimiMonitor-Setup-1.2.5.exe -Algorithm SHA256
+Get-FileHash .\KimiMonitor-Setup-1.2.6.exe -Algorithm SHA256
 ```
 
 将结果与同一 Release 的 `SHA256SUMS.txt` 对比。
